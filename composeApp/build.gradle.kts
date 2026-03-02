@@ -1,9 +1,10 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.compose)
     alias(libs.plugins.android.application)
-
 }
 
 kotlin {
@@ -42,19 +43,22 @@ kotlin {
             dependencies {
                 implementation(libs.androidx.activity.compose)
                 implementation(libs.androidx.navigation.compose)
+                implementation(libs.androidx.lifecycle.viewmodel)
                 implementation(libs.androidx.lifecycle.viewmodel.compose)
+
                 implementation(libs.androidx.compose.ui.tooling)
                 implementation(libs.androidx.compose.ui.tooling.preview)
 
                 implementation(libs.ktor.client.okhttp)
-                implementation(libs.androidx.lifecycle.viewmodel)
             }
         }
     }
 }
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask<*>>().configureEach {
-    compilerOptions.freeCompilerArgs.add("-Xexpect-actual-classes")
+
+tasks.withType<KotlinCompile>().configureEach {
+    kotlinOptions.freeCompilerArgs += "-Xexpect-actual-classes"
 }
+
 android {
     namespace = "com.travelguide"
     compileSdk = 34
@@ -76,10 +80,13 @@ android {
         compose = true
     }
 
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.10"
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
-
 }
