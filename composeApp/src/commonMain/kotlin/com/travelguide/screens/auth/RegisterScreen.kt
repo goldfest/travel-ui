@@ -15,11 +15,13 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
+import com.travelguide.auth.AuthUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
-    onRegisterSuccess: () -> Unit,
+    state: AuthUiState,
+    onRegisterClick: (email: String, username: String, password: String, phone: String?) -> Unit,
     onLoginClick: () -> Unit
 ) {
     var username by remember { mutableStateOf("") }
@@ -184,17 +186,13 @@ fun RegisterScreen(
 
             // Кнопка регистрации
             Button(
-                onClick = {
-                    isLoading = true
-                    // TODO: логика регистрации
-                    onRegisterSuccess()
-                },
+                onClick = { onRegisterClick(email, username, password, null) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
                 enabled = username.isNotEmpty() && email.isNotEmpty() &&
                         password.isNotEmpty() && confirmPassword.isNotEmpty() &&
-                        termsAccepted && !isLoading
+                        termsAccepted && !state.isLoading
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(

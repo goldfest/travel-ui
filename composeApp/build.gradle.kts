@@ -18,7 +18,6 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                // Compose Multiplatform зависимости
                 implementation(compose.runtime)
                 implementation(compose.foundation)
                 implementation(compose.material3)
@@ -26,32 +25,36 @@ kotlin {
                 implementation(compose.ui)
                 implementation(compose.components.resources)
                 implementation(compose.components.uiToolingPreview)
-                implementation(compose.material)
-                implementation(compose.material3)
 
-                implementation("androidx.navigation:navigation-compose:2.7.7")
-
-                // Kotlin зависимости
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.serialization.json)
 
+                implementation(libs.ktor.client.core)
+                implementation(libs.ktor.client.content.negotiation)
+                implementation(libs.ktor.serialization.kotlinx.json)
+                implementation(libs.ktor.client.logging)
 
+                implementation(libs.settings)
             }
         }
 
         val androidMain by getting {
             dependencies {
-                // Android специфичные зависимости
                 implementation(libs.androidx.activity.compose)
                 implementation(libs.androidx.navigation.compose)
                 implementation(libs.androidx.lifecycle.viewmodel.compose)
                 implementation(libs.androidx.compose.ui.tooling)
                 implementation(libs.androidx.compose.ui.tooling.preview)
+
+                implementation(libs.ktor.client.okhttp)
+                implementation(libs.androidx.lifecycle.viewmodel)
             }
         }
     }
 }
-
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask<*>>().configureEach {
+    compilerOptions.freeCompilerArgs.add("-Xexpect-actual-classes")
+}
 android {
     namespace = "com.travelguide"
     compileSdk = 34
@@ -73,13 +76,10 @@ android {
         compose = true
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.10"
-    }
-
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
 }

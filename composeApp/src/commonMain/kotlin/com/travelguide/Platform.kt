@@ -1,4 +1,4 @@
-package com.example.travelguide
+package com.travelguide
 
 interface Platform {
     val name: String

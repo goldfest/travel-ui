@@ -17,11 +17,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.travelguide.auth.AuthUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () -> Unit,
+    state: AuthUiState,
+    onLoginClick: (email: String, password: String) -> Unit,
     onRegisterClick: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
@@ -124,17 +126,13 @@ fun LoginScreen(
 
             // Кнопка входа
             Button(
-                onClick = {
-                    isLoading = true
-                    // TODO: логика входа
-                    onLoginSuccess()
-                },
+                onClick = { onLoginClick(email, password) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
-                enabled = email.isNotEmpty() && password.isNotEmpty() && !isLoading
+                enabled = email.isNotEmpty() && password.isNotEmpty() && !state.isLoading
             ) {
-                if (isLoading) {
+                if (state.isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
                         color = MaterialTheme.colorScheme.onPrimary
