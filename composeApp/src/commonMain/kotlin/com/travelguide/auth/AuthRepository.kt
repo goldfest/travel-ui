@@ -14,7 +14,7 @@ class AuthRepository(
 
         return resp.user?.let {
             User(
-                id = it.id.toInt(),
+                id = it.id,
                 email = it.email,
                 username = it.username,
                 phone = it.phone,
@@ -22,7 +22,7 @@ class AuthRepository(
                 isBlocked = it.isBlocked,
                 role = it.role,
                 status = it.status,
-                homeCityId = it.homeCityId?.toInt()
+                homeCityId = it.homeCityId
             )
         }
     }
@@ -34,7 +34,7 @@ class AuthRepository(
 
         return resp.user?.let {
             User(
-                id = it.id.toInt(),
+                id = it.id,
                 email = it.email,
                 username = it.username,
                 phone = it.phone,
@@ -42,14 +42,23 @@ class AuthRepository(
                 isBlocked = it.isBlocked,
                 role = it.role,
                 status = it.status,
-                homeCityId = it.homeCityId?.toInt()
+                homeCityId = it.homeCityId
             )
         }
     }
 
     fun isLoggedIn(): Boolean = !storage.accessToken.isNullOrBlank()
 
-    fun logout() {
-        storage.clear()
+    suspend fun logout() {
+        try {
+            val refresh = storage.refreshToken
+            if (!refresh.isNullOrBlank()) {
+                api.logout(refresh)   // вызов backend
+            }
+        } catch (e: Exception) {
+            // backend может быть недоступен — это не критично
+        } finally {
+            storage.clear()
+        }
     }
 }

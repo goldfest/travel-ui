@@ -36,4 +36,11 @@ class AuthApi(
             setBody(RefreshTokenRequestDto(refreshToken))
         }.body()
     }
+
+    suspend fun logout(refreshToken: String) {
+        client.post("$baseUrl/auth/logout") {
+            contentType(ContentType.Application.Json)
+            setBody(RefreshTokenRequestDto(refreshToken))
+        }
+    }
 }

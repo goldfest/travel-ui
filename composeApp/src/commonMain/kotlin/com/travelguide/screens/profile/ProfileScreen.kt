@@ -1,39 +1,45 @@
-// screens/profile/ProfileScreen.kt
 package com.travelguide.ui.screens.profile
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.travelguide.domain.models.User
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.shape.RoundedCornerShape
+
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
+
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
+    user: User,
     onBackClick: () -> Unit,
+    onEditClick: () -> Unit,
     onLogout: () -> Unit,
     onFavoritesClick: () -> Unit,
     onRoutesClick: () -> Unit,
     onCollectionsClick: () -> Unit,
-    onAdminClick: () -> Unit, // Добавили новый параметр
-    isAdmin: Boolean = true // Временно true для тестирования
+    onAdminClick: () -> Unit,
+    onChangePasswordClick: () -> Unit,
+    onDeleteAccountClick: () -> Unit,
 ) {
-    // Временно мок пользователя
-    val currentUser = User(
-        id = 1,
-        email = "user@example.com",
-        username = "Путешественник",
-        avatarUrl = null,
-        role = "USER"
-    )
+    val isAdmin = user.isAdmin()
 
     Scaffold(
         topBar = {
@@ -43,227 +49,178 @@ fun ProfileScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
                     }
+                },
+                actions = {
+                    IconButton(onClick = onEditClick) {
+                        Icon(Icons.Default.Edit, contentDescription = "Редактировать")
+                    }
                 }
             )
         }
-    ) { paddingValues ->
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(padding)
                 .padding(horizontal = 16.dp)
         ) {
-            // Заголовок профиля
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(vertical = 24.dp)
+            // Header карточка
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp)
+                    .clickable(onClick = onEditClick),
+                shape = RoundedCornerShape(20.dp)
             ) {
-                // Аватар
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(80.dp)
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = currentUser.username.first().toString(),
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
+                    val context = LocalContext.current
+                    val initial = user.username.firstOrNull()?.uppercase() ?: "?"
+                    var avatarFailed by remember(user.avatarUrl) { mutableStateOf(false) }
+
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(72.dp)
+                    ) {
+                        val url = user.avatarUrl
+
+                        if (!url.isNullOrBlank() && !avatarFailed) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(url)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Аватар",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop,
+                                onError = { avatarFailed = true }
+                            )
+                        } else {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = initial,
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
+                        }
                     }
-                }
 
-                Spacer(modifier = Modifier.width(16.dp))
+                    Spacer(Modifier.width(16.dp))
 
-                // Информация пользователя
-                Column {
-                    Text(
-                        text = currentUser.username,
-                        style = MaterialTheme.typography.headlineSmall
-                    )
-                    Text(
-                        text = currentUser.email,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    if (currentUser.isAdmin()) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.errorContainer,
-                            modifier = Modifier.padding(top = 4.dp)
-                        ) {
+                    Column(Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(user.username, style = MaterialTheme.typography.titleLarge)
+                            if (isAdmin) {
+                                Spacer(Modifier.width(8.dp))
+                                AssistChip(
+                                    onClick = {},
+                                    label = { Text("ADMIN") },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.AdminPanelSettings, contentDescription = null)
+                                    }
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(4.dp))
+
+                        Text(
+                            text = user.email,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        if (!user.phone.isNullOrBlank()) {
+                            Spacer(Modifier.height(2.dp))
                             Text(
-                                text = "Администратор",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                text = user.phone!!,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                    }
+
+                    IconButton(onClick = onEditClick) {
+                        Icon(Icons.Default.ChevronRight, contentDescription = "Открыть редактирование")
                     }
                 }
             }
 
-            // Основные действия
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            Spacer(Modifier.height(16.dp))
+
+            // Быстрые действия
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
                 Column {
-                    // Избранное
+                    Divider()
+                    ProfileNavItem("Избранное", Icons.Default.Favorite, onFavoritesClick)
+                    Divider()
+                    ProfileNavItem("Мои маршруты", Icons.Default.Route, onRoutesClick)
+                    Divider()
+                    ProfileNavItem("Мои коллекции", Icons.Default.Collections, onCollectionsClick)
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Настройки (заглушки)
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+                Column {
                     ListItem(
-                        headlineContent = { Text("Избранное") },
-                        leadingContent = {
-                            Icon(
-                                Icons.Default.Favorite,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        trailingContent = {
-                            Icon(Icons.Default.ChevronRight, contentDescription = null)
-                        },
-                        modifier = Modifier.clickable(onClick = onFavoritesClick)
+                        headlineContent = { Text("Темная тема") },
+                        leadingContent = { Icon(Icons.Default.DarkMode, contentDescription = null) },
+                        trailingContent = { Switch(checked = false, onCheckedChange = { /* TODO */ }) }
                     )
                     Divider()
-
-                    // Мои маршруты
                     ListItem(
-                        headlineContent = { Text("Мои маршруты") },
-                        leadingContent = {
-                            Icon(
-                                Icons.Default.Route,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        trailingContent = {
-                            Icon(Icons.Default.ChevronRight, contentDescription = null)
-                        },
-                        modifier = Modifier.clickable(onClick = onRoutesClick)
-                    )
-                    Divider()
-
-                    // Коллекции
-                    ListItem(
-                        headlineContent = { Text("Мои коллекции") },
-                        leadingContent = {
-                            Icon(
-                                Icons.Default.Collections,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        trailingContent = {
-                            Icon(Icons.Default.ChevronRight, contentDescription = null)
-                        },
-                        modifier = Modifier.clickable(onClick = onCollectionsClick)
-                    )
-                    Divider()
-
-                    // История
-                    ListItem(
-                        headlineContent = { Text("История поиска") },
-                        leadingContent = {
-                            Icon(
-                                Icons.Default.History,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        trailingContent = {
-                            Icon(Icons.Default.ChevronRight, contentDescription = null)
-                        },
+                        headlineContent = { Text("Уведомления") },
+                        leadingContent = { Icon(Icons.Default.Notifications, contentDescription = null) },
+                        trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
                         modifier = Modifier.clickable { /* TODO */ }
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Настройки
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column {
-                    ListItem(
-                        headlineContent = { Text("Настройки") },
-                        leadingContent = {
-                            Icon(
-                                Icons.Default.Settings,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        trailingContent = {
-                            Icon(Icons.Default.ChevronRight, contentDescription = null)
-                        }
-                    )
-                    Divider()
-
-                    ListItem(
-                        headlineContent = { Text("Уведомления") },
-                        leadingContent = {
-                            Icon(
-                                Icons.Default.Notifications,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        trailingContent = {
-                            Icon(Icons.Default.ChevronRight, contentDescription = null)
-                        }
-                    )
-                    Divider()
-
-                    ListItem(
-                        headlineContent = { Text("Темная тема") },
-                        leadingContent = {
-                            Icon(
-                                Icons.Default.DarkMode,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        trailingContent = {
-                            Switch(
-                                checked = false,
-                                onCheckedChange = { /* TODO */ }
-                            )
-                        }
-                    )
-                }
-            }
-
-            // Админ-панель (если пользователь админ)
             if (isAdmin) {
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(Modifier.height(16.dp))
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
-                    )
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.15f)),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    ListItem(
-                        headlineContent = {
-                            Text("Админ-панель", color = MaterialTheme.colorScheme.error)
-                        },
-                        leadingContent = {
-                            Icon(
-                                Icons.Default.AdminPanelSettings,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        },
-                        trailingContent = {
-                            Icon(Icons.Default.ChevronRight, contentDescription = null)
-                        },
-                        modifier = Modifier.clickable(onClick = onAdminClick)
+                    ProfileNavItem(
+                        title = "Админ-панель",
+                        icon = Icons.Default.AdminPanelSettings,
+                        onClick = onAdminClick,
+                        tint = MaterialTheme.colorScheme.error
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(Modifier.height(16.dp))
 
-            // Кнопка выхода
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+                Column {
+                    ProfileNavItem(
+                        title = "Сменить пароль",
+                        icon = Icons.Default.Password,
+                        onClick = onChangePasswordClick
+                    )
+                    Divider()
+                    ProfileNavItem(
+                        title = "Удалить аккаунт",
+                        icon = Icons.Default.DeleteForever,
+                        onClick = onDeleteAccountClick,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+
+            Spacer(Modifier.weight(1f))
+
             Button(
                 onClick = onLogout,
                 colors = ButtonDefaults.buttonColors(
@@ -272,12 +229,29 @@ fun ProfileScreen(
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 24.dp)
+                    .padding(vertical = 20.dp)
+                    .height(52.dp),
+                shape = RoundedCornerShape(16.dp)
             ) {
                 Icon(Icons.Default.ExitToApp, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Выйти из аккаунта")
+                Spacer(Modifier.width(8.dp))
+                Text("Выйти", style = MaterialTheme.typography.titleMedium)
             }
         }
     }
+}
+
+@Composable
+private fun ProfileNavItem(
+    title: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+    tint: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary
+) {
+    ListItem(
+        headlineContent = { Text(title) },
+        leadingContent = { Icon(icon, contentDescription = null, tint = tint) },
+        trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+        modifier = Modifier.clickable(onClick = onClick)
+    )
 }

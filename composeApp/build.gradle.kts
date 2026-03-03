@@ -36,6 +36,8 @@ kotlin {
                 implementation(libs.ktor.client.logging)
 
                 implementation(libs.settings)
+                implementation(libs.ktor.client.auth)
+
             }
         }
 
@@ -50,6 +52,8 @@ kotlin {
                 implementation(libs.androidx.compose.ui.tooling.preview)
 
                 implementation(libs.ktor.client.okhttp)
+
+                implementation("io.coil-kt:coil-compose:2.6.0")
             }
         }
     }

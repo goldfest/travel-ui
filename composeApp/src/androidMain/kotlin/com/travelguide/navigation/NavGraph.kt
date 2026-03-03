@@ -5,8 +5,13 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.travelguide.AppContainer
+import com.travelguide.BootRoute
 import com.travelguide.auth.LoginRoute
 import com.travelguide.auth.RegisterRoute
+import com.travelguide.profile.ChangePasswordRoute
+import com.travelguide.profile.DeleteAccountRoute
+import com.travelguide.profile.EditProfileRoute
+import com.travelguide.profile.ProfileRoute
 import com.travelguide.ui.screens.admin.AdminScreen
 import com.travelguide.ui.screens.city.CityInfoScreen
 import com.travelguide.ui.screens.city.CityListScreen
@@ -30,6 +35,17 @@ fun AppNavHost(
     container: AppContainer
 ) {
     NavHost(navController = navController, startDestination = startDestination) {
+        composable("boot") {
+            BootRoute(
+                container = container,
+                onGoLogin = {
+                    navController.navigate("login") { popUpTo("boot") { inclusive = true } }
+                },
+                onGoMain = {
+                    navController.navigate("cityList") { popUpTo("boot") { inclusive = true } }
+                }
+            )
+        }
 
         composable("login") {
             LoginRoute(
@@ -167,20 +183,47 @@ fun AppNavHost(
             CollectionsScreen(onBackClick = { navController.popBackStack() })
         }
 
-        // Profile/Admin
+        // Profile
         composable("profile") {
-            ProfileScreen(
+            ProfileRoute(
+                container = container,
                 onBackClick = { navController.popBackStack() },
-                onLogout = {
-                    navController.navigate("login") {
-                        popUpTo("cityList") { inclusive = true }
-                    }
+                onLogoutNavigate = {
+                    navController.navigate("login") { popUpTo("cityList") { inclusive = true } }
                 },
                 onFavoritesClick = { navController.navigate("favorites") },
                 onRoutesClick = { navController.navigate("routes") },
                 onCollectionsClick = { navController.navigate("collections") },
+                onEditClick = { navController.navigate("editProfile") },
                 onAdminClick = { navController.navigate("admin") },
-                isAdmin = true
+                onChangePasswordClick = { navController.navigate("changePassword") },
+                onDeleteAccountClick = { navController.navigate("deleteAccount") }
+            )
+        }
+
+        composable("editProfile") {
+            EditProfileRoute(
+                container = container,
+                onBackClick = { navController.popBackStack() },
+                onSaved = { navController.popBackStack() } // вернуться в профиль
+            )
+        }
+
+        composable("changePassword") {
+            ChangePasswordRoute(
+                container = container,
+                onBackClick = { navController.popBackStack() },
+                onDone = { navController.popBackStack() }
+            )
+        }
+
+        composable("deleteAccount") {
+            DeleteAccountRoute(
+                container = container,
+                onBackClick = { navController.popBackStack() },
+                onDeleted = {
+                    navController.navigate("login") { popUpTo("cityList") { inclusive = true } }
+                }
             )
         }
 

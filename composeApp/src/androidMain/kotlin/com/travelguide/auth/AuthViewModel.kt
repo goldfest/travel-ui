@@ -40,5 +40,10 @@ class AuthViewModel(
         }
     }
 
-    fun logout() = repo.logout()
+    fun logout(onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            repo.logout()
+            onDone()
+        }
+    }
 }
