@@ -3,16 +3,16 @@ package com.travelguide.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.travelguide.auth.AuthRepository
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-
 import com.travelguide.network.UnauthorizedException
 import com.travelguide.session.SessionManager
 import com.travelguide.ui.UiEvent
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 class ProfileViewModel(
     private val userRepo: UserRepository,
@@ -26,25 +26,71 @@ class ProfileViewModel(
     private val _editState = MutableStateFlow(com.travelguide.ui.screens.profile.EditProfileUiState())
     val editState: StateFlow<com.travelguide.ui.screens.profile.EditProfileUiState> = _editState
 
-    fun loadMe() {
-        if (_state.value.isLoading) return
+    private val _events = Channel<UiEvent>(Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
+
+    private var loadJob: Job? = null
+
+    private suspend fun snack(msg: String) {
+        _events.send(UiEvent.Snackbar(msg))
+    }
+
+    /**
+     * Вызывай при входе на экран профиля:
+     * - один раз
+     * - или при pull-to-refresh
+     */
+    fun loadMe(force: Boolean = false) {
+        val s = _state.value
+        if (s.isLoggingOut) return
+        if (s.isLoading) return
+        if (!force && s.hasLoadedOnce && s.user != null) return
+
+        loadJob?.cancel()
         _state.update { it.copy(isLoading = true, error = null) }
 
-        viewModelScope.launch {
+        loadJob = viewModelScope.launch {
             try {
                 val me = userRepo.getMe()
-                _state.update { it.copy(isLoading = false, user = me) }
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        user = me,
+                        error = null,
+                        hasLoadedOnce = true
+                    )
+                }
             } catch (e: UnauthorizedException) {
-                _state.update { it.copy(isLoading = false, error = null, user = null) }
+                // если уже выходим — молча игнорируем
+                if (_state.value.isLoggingOut) return@launch
+
+                // не показываем "ошибка загрузки", потому что это просто неавторизован
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        user = null,
+                        error = null,
+                        hasLoadedOnce = true
+                    )
+                }
+
+                // здесь нормально переводить на авторизацию
                 authRepo.logout()
                 sessionManager.unauthorized()
             } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, error = e.message ?: "Load profile error") }
+                if (_state.value.isLoggingOut) return@launch
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        error = e.message ?: "Load profile error",
+                        hasLoadedOnce = true
+                    )
+                }
             }
         }
     }
 
-    fun refresh() = loadMe()
+    fun refresh() = loadMe(force = true)
 
     fun saveProfile(
         username: String,
@@ -53,7 +99,9 @@ class ProfileViewModel(
         homeCityId: Long?,
         onSuccess: () -> Unit
     ) {
-        val current = _state.value.user ?: return
+        if (_state.value.isLoggingOut) return
+        if (_state.value.user == null) return
+
         _editState.update { it.copy(isSaving = true, error = null) }
 
         viewModelScope.launch {
@@ -67,6 +115,11 @@ class ProfileViewModel(
                 _state.update { it.copy(user = updated) }
                 _editState.update { it.copy(isSaving = false, error = null) }
                 onSuccess()
+            } catch (e: UnauthorizedException) {
+                // при 401 не показываем "ошибка сохранения", просто уходим в auth
+                _editState.update { it.copy(isSaving = false, error = null) }
+                authRepo.logout()
+                sessionManager.unauthorized()
             } catch (e: Exception) {
                 _editState.update { it.copy(isSaving = false, error = e.message ?: "Save error") }
             }
@@ -74,19 +127,24 @@ class ProfileViewModel(
     }
 
     fun logout(onDone: () -> Unit) {
+        // важно: сразу гасим любые загрузки/ошибки, чтобы UI не успел моргнуть
+        _state.update { it.copy(isLoggingOut = true, error = null, isLoading = false) }
+        _editState.update { it.copy(isSaving = false, error = null) }
+
+        // отменяем активную загрузку профиля
+        loadJob?.cancel()
+        loadJob = null
+
         viewModelScope.launch {
-            authRepo.logout()
-            _state.update { ProfileUiState() }
-            _editState.update { com.travelguide.ui.screens.profile.EditProfileUiState() }
-            onDone()
+            try {
+                authRepo.logout()
+            } finally {
+                // чистим стейты и уходим
+                _state.value = ProfileUiState(isLoggingOut = true, hasLoadedOnce = true)
+                _editState.value = com.travelguide.ui.screens.profile.EditProfileUiState()
+                onDone()
+            }
         }
-    }
-
-    private val _events = Channel<UiEvent>(Channel.BUFFERED)
-    val events = _events.receiveAsFlow()
-
-    private suspend fun snack(msg: String) {
-        _events.send(UiEvent.Snackbar(msg))
     }
 
     fun changePassword(
@@ -94,14 +152,17 @@ class ProfileViewModel(
         new: String,
         onSuccess: () -> Unit
     ) {
+        if (_state.value.isLoggingOut) return
+
         viewModelScope.launch {
             try {
                 _editState.update { it.copy(isSaving = true, error = null) }
                 userRepo.changePassword(current, new)
-                _editState.update { it.copy(isSaving = false) }
+                _editState.update { it.copy(isSaving = false, error = null) }
                 snack("Пароль успешно изменён")
                 onSuccess()
             } catch (e: UnauthorizedException) {
+                _editState.update { it.copy(isSaving = false, error = null) }
                 authRepo.logout()
                 sessionManager.unauthorized()
             } catch (e: Exception) {
@@ -111,18 +172,19 @@ class ProfileViewModel(
         }
     }
 
-    fun deleteAccount(
-        onSuccess: () -> Unit
-    ) {
+    fun deleteAccount(onSuccess: () -> Unit) {
+        if (_state.value.isLoggingOut) return
+
         viewModelScope.launch {
             try {
                 _editState.update { it.copy(isSaving = true, error = null) }
                 userRepo.deleteMe()
                 authRepo.logout()
-                _editState.update { it.copy(isSaving = false) }
+                _editState.update { it.copy(isSaving = false, error = null) }
                 snack("Аккаунт удалён")
                 onSuccess()
             } catch (e: UnauthorizedException) {
+                _editState.update { it.copy(isSaving = false, error = null) }
                 authRepo.logout()
                 sessionManager.unauthorized()
             } catch (e: Exception) {
@@ -132,18 +194,18 @@ class ProfileViewModel(
         }
     }
 
-    fun uploadAvatar(
-        bytes: ByteArray,
-        mimeType: String
-    ) {
+    fun uploadAvatar(bytes: ByteArray, mimeType: String) {
+        if (_state.value.isLoggingOut) return
+
         viewModelScope.launch {
             try {
                 _editState.update { it.copy(isSaving = true, error = null) }
                 val updated = userRepo.uploadAvatar(bytes, mimeType)
                 _state.update { it.copy(user = updated) }
-                _editState.update { it.copy(isSaving = false) }
+                _editState.update { it.copy(isSaving = false, error = null) }
                 snack("Аватар обновлён")
             } catch (e: UnauthorizedException) {
+                _editState.update { it.copy(isSaving = false, error = null) }
                 authRepo.logout()
                 sessionManager.unauthorized()
             } catch (e: Exception) {

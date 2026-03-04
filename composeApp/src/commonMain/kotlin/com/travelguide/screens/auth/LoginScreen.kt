@@ -4,7 +4,6 @@ package com.travelguide.ui.screens.auth
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Visibility
@@ -29,20 +28,52 @@ fun LoginScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var isLoading by remember { mutableStateOf(false) }
-    var rememberMe by remember { mutableStateOf(true) }
+
+    // Ошибка с сервера (подстрой под свой AuthUiState, если поле называется иначе)
+    val errorText: String? = state.error
+
+    // ---- распознаём типы ошибок (под твой бэкенд)
+    val isBadCredentials =
+        errorText?.contains("Invalid email or password", ignoreCase = true) == true ||
+                errorText?.contains("Невер", ignoreCase = true) == true // если русифицируешь
+
+    val isUserNotFound =
+        errorText?.contains("Пользователь не найден", ignoreCase = true) == true
+
+    val isBlocked =
+        errorText?.contains("Пользователь заблокирован", ignoreCase = true) == true
+
+    val isInactive =
+        errorText?.contains("Аккаунт не активен", ignoreCase = true) == true
+
+    // Что подсвечивать:
+    // - неверные креды/нет пользователя -> подсветим email (и можно пароль тоже)
+    val emailError = isBadCredentials || isUserNotFound
+    val passError = isBadCredentials
+
+    // Сообщения под полями
+    val emailSupporting: String? = when {
+        isUserNotFound -> "Пользователь не найден"
+        isBadCredentials -> "Неверный email или пароль"
+        else -> null
+    }
+    val passSupporting: String? = when {
+        isBadCredentials -> "Проверьте пароль"
+        else -> null
+    }
+
+    // Общая ошибка (не привязана к конкретному полю)
+    val showGenericError =
+        !errorText.isNullOrBlank() &&
+                !emailError &&
+                !passError &&
+                !isBlocked &&
+                !isInactive
+
+    val canSubmit = email.isNotBlank() && password.isNotBlank() && !state.isLoading
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Вход") },
-                navigationIcon = {
-                    IconButton(onClick = { /* TODO: back navigation */ }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
-                    }
-                }
-            )
-        }
+        topBar = { TopAppBar(title = { Text("Вход") }) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -52,7 +83,6 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Заголовок
             Text(
                 text = "TravelGuide",
                 style = MaterialTheme.typography.headlineLarge,
@@ -65,29 +95,28 @@ fun LoginScreen(
                 modifier = Modifier.padding(bottom = 32.dp)
             )
 
-            // Поле email
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
                 label = { Text("Email") },
-                leadingIcon = {
-                    Icon(Icons.Default.Email, contentDescription = null)
-                },
+                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                enabled = !state.isLoading,
+                isError = emailError,
+                supportingText = {
+                    if (!emailSupporting.isNullOrBlank()) Text(emailSupporting)
+                }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Поле пароля
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
                 label = { Text("Пароль") },
-                leadingIcon = {
-                    Icon(Icons.Default.Lock, contentDescription = null)
-                },
+                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                 trailingIcon = {
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
                         Icon(
@@ -99,38 +128,58 @@ fun LoginScreen(
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                enabled = !state.isLoading,
+                isError = passError,
+                supportingText = {
+                    if (!passSupporting.isNullOrBlank()) Text(passSupporting)
+                }
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Запомнить меня и забыли пароль
+            // Блокировка/неактивен — компактно под полями (не сверху)
+            if (isBlocked || isInactive) {
+                val msg = when {
+                    isBlocked -> "Пользователь заблокирован"
+                    else -> "Аккаунт не активен"
+                }
+                Text(
+                    text = msg,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            // “прочая” ошибка — тоже снизу, маленьким текстом
+            if (showGenericError) {
+                Text(
+                    text = errorText ?: "",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        checked = rememberMe,
-                        onCheckedChange = { rememberMe = it }
-                    )
-                    Text("Запомнить меня")
-                }
-                TextButton(onClick = { /* TODO: восстановление пароля */ }) {
+                TextButton(onClick = { /* TODO */ }, enabled = !state.isLoading) {
                     Text("Забыли пароль?")
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Кнопка входа
             Button(
-                onClick = { onLoginClick(email, password) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                enabled = email.isNotEmpty() && password.isNotEmpty() && !state.isLoading
+                onClick = { onLoginClick(email.trim(), password) },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                enabled = canSubmit
             ) {
                 if (state.isLoading) {
                     CircularProgressIndicator(
@@ -142,52 +191,14 @@ fun LoginScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Разделитель
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Divider(modifier = Modifier.weight(1f))
-                Text(
-                    "или",
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Divider(modifier = Modifier.weight(1f))
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Кнопки соцсетей
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedButton(
-                    onClick = { /* TODO: вход через Google */ },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Google")
-                }
-                OutlinedButton(
-                    onClick = { /* TODO: вход через VK */ },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("VK")
-                }
-            }
-
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Ссылка на регистрацию
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
             ) {
                 Text("Нет аккаунта? ")
-                TextButton(onClick = onRegisterClick) {
+                TextButton(onClick = onRegisterClick, enabled = !state.isLoading) {
                     Text("Зарегистрироваться")
                 }
             }

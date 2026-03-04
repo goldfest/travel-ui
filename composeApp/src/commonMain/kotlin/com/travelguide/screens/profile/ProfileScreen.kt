@@ -92,6 +92,9 @@ fun ProfileScreen(
                                 model = ImageRequest.Builder(context)
                                     .data(url)
                                     .crossfade(true)
+                                    // ключи кеша = сам url, чтобы при смене url точно обновлялось
+                                    .memoryCacheKey(url)
+                                    .diskCacheKey(url)
                                     .build(),
                                 contentDescription = "Аватар",
                                 modifier = Modifier.fillMaxSize(),

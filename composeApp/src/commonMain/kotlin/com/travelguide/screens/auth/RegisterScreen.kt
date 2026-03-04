@@ -30,20 +30,35 @@ fun RegisterScreen(
     var confirmPassword by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
-    var isLoading by remember { mutableStateOf(false) }
     var termsAccepted by remember { mutableStateOf(false) }
 
+    // ---- password rules
+    val passMin8 = password.length >= 8
+    val passLettersDigits = password.any { it.isLetter() } && password.any { it.isDigit() }
+    val passMatch = password.isNotEmpty() && password == confirmPassword
+    val passwordOk = passMin8 && passLettersDigits && passMatch
+
+    // ---- server error
+    val errorText: String? = state.error
+
+    // Сервер теперь отвечает по-русски
+    val isEmailTaken = errorText?.contains("Почта уже используется", ignoreCase = true) == true
+    val isUsernameTaken = errorText?.contains("Логин уже используется", ignoreCase = true) == true
+
+    // (опционально) общая ошибка, которую не привязать к полям — можно показать снизу маленьким текстом
+    // но раз ты хочешь убрать "надпись сверху", делаем нейтрально:
+    val showGenericError =
+        !errorText.isNullOrBlank() && !isEmailTaken && !isUsernameTaken
+
+    val canSubmit =
+        username.isNotBlank() &&
+                email.isNotBlank() &&
+                passwordOk &&
+                termsAccepted &&
+                !state.isLoading
+
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Регистрация") },
-                navigationIcon = {
-                    IconButton(onClick = { /* TODO: back navigation */ }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
-                    }
-                }
-            )
-        }
+        topBar = { TopAppBar(title = { Text("Регистрация") }) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -53,52 +68,55 @@ fun RegisterScreen(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // Заголовок
             Text(
                 text = "Создать аккаунт",
                 style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(bottom = 24.dp)
+                modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            // Поле имени пользователя
+            // ---- Username (логин)
             OutlinedTextField(
                 value = username,
                 onValueChange = { username = it },
-                label = { Text("Имя пользователя") },
-                leadingIcon = {
-                    Icon(Icons.Default.Person, contentDescription = null)
-                },
+                label = { Text("Логин") },
+                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                enabled = !state.isLoading,
+                isError = isUsernameTaken,
+                supportingText = {
+                    if (isUsernameTaken) Text("Этот логин уже используется")
+                }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Поле email
+            // ---- Email
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
                 label = { Text("Email") },
-                leadingIcon = {
-                    Icon(Icons.Default.Email, contentDescription = null)
-                },
+                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                enabled = !state.isLoading,
+                isError = isEmailTaken,
+                supportingText = {
+                    if (isEmailTaken) Text("Эта почта уже используется")
+                }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Поле пароля
+            // ---- Password
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
                 label = { Text("Пароль") },
-                leadingIcon = {
-                    Icon(Icons.Default.Lock, contentDescription = null)
-                },
+                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                 trailingIcon = {
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
                         Icon(
@@ -110,19 +128,18 @@ fun RegisterScreen(
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                enabled = !state.isLoading
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Подтверждение пароля
+            // ---- Confirm password
             OutlinedTextField(
                 value = confirmPassword,
                 onValueChange = { confirmPassword = it },
                 label = { Text("Подтвердите пароль") },
-                leadingIcon = {
-                    Icon(Icons.Default.Lock, contentDescription = null)
-                },
+                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                 trailingIcon = {
                     IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
                         Icon(
@@ -134,67 +151,61 @@ fun RegisterScreen(
                 visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                enabled = !state.isLoading
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Требования к паролю
+            // ---- Requirements
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                PasswordRequirement(
-                    text = "Минимум 8 символов",
-                    isValid = password.length >= 8
-                )
-                PasswordRequirement(
-                    text = "Содержит буквы и цифры",
-                    isValid = password.any { it.isLetter() } && password.any { it.isDigit() }
-                )
-                PasswordRequirement(
-                    text = "Пароли совпадают",
-                    isValid = password == confirmPassword && password.isNotEmpty()
+                PasswordRequirement("Минимум 8 символов", passMin8)
+                PasswordRequirement("Содержит буквы и цифры", passLettersDigits)
+                PasswordRequirement("Пароли совпадают", passMatch)
+            }
+
+            // ---- Общая ошибка (если не email/логин) — НЕ сверху, а компактно под требованиями
+            if (showGenericError) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = errorText ?: "",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Согласие с условиями
+            // ---- Terms
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Checkbox(
                     checked = termsAccepted,
-                    onCheckedChange = { termsAccepted = it }
+                    onCheckedChange = { termsAccepted = it },
+                    enabled = !state.isLoading
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Я согласен с ",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                TextButton(
-                    onClick = { /* TODO: показать условия */ },
-                    modifier = Modifier.padding(0.dp)
-                ) {
+                Text(text = "Я согласен с ", style = MaterialTheme.typography.bodyMedium)
+                TextButton(onClick = { /* TODO */ }, enabled = !state.isLoading) {
                     Text("условиями использования")
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Кнопка регистрации
+            // ---- Submit
             Button(
-                onClick = { onRegisterClick(email, username, password, null) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                enabled = username.isNotEmpty() && email.isNotEmpty() &&
-                        password.isNotEmpty() && confirmPassword.isNotEmpty() &&
-                        termsAccepted && !state.isLoading
+                onClick = { onRegisterClick(email.trim(), username.trim(), password, null) },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                enabled = canSubmit
             ) {
-                if (isLoading) {
+                if (state.isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
                         color = MaterialTheme.colorScheme.onPrimary
@@ -206,7 +217,6 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Разделитель
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -220,49 +230,26 @@ fun RegisterScreen(
                 Divider(modifier = Modifier.weight(1f))
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // Кнопки соцсетей
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedButton(
-                    onClick = { /* TODO: регистрация через Google */ },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Google")
-                }
-                OutlinedButton(
-                    onClick = { /* TODO: регистрация через VK */ },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("VK")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Ссылка на вход
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
             ) {
                 Text("Уже есть аккаунт? ")
-                TextButton(onClick = onLoginClick) {
+                TextButton(onClick = onLoginClick, enabled = !state.isLoading) {
                     Text("Войти")
                 }
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
 
 @Composable
 fun PasswordRequirement(text: String, isValid: Boolean) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(horizontal = 4.dp)
-    ) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 4.dp)) {
         Icon(
             imageVector = if (isValid) Icons.Default.CheckCircle else Icons.Default.Circle,
             contentDescription = null,

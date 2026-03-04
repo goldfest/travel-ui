@@ -96,11 +96,16 @@ fun EditProfileScreen(
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(96.dp)
                 ) {
-                    if (avatarUrl.isNotBlank() && !avatarFailed) {
+                    val url = user.avatarUrl
+
+                    if (!url.isNullOrBlank() && !avatarFailed) {
                         AsyncImage(
                             model = ImageRequest.Builder(context)
-                                .data(avatarUrl)
+                                .data(url)
                                 .crossfade(true)
+                                // ключи кеша = сам url, чтобы при смене url точно обновлялось
+                                .memoryCacheKey(url)
+                                .diskCacheKey(url)
                                 .build(),
                             contentDescription = "Аватар",
                             modifier = Modifier.fillMaxSize(),
@@ -134,16 +139,6 @@ fun EditProfileScreen(
                 onValueChange = { phone = it },
                 label = { Text("Телефон") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            // Можно оставить, если хочешь вручную менять avatarUrl, но в реальном приложении обычно это скрывают.
-            OutlinedTextField(
-                value = avatarUrl,
-                onValueChange = { avatarUrl = it },
-                label = { Text("Avatar URL") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
