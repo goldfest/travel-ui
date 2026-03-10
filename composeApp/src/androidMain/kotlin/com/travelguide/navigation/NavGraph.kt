@@ -27,6 +27,8 @@ import com.travelguide.ui.screens.route.RouteDetailScreen
 import com.travelguide.ui.screens.route.RouteListScreen
 import com.travelguide.ui.screens.route.RouteMapScreen
 import com.travelguide.ui.screens.search.SearchScreen
+import com.travelguide.city.CityInfoRoute
+import com.travelguide.city.CityListRoute
 
 @Composable
 fun AppNavHost(
@@ -65,20 +67,24 @@ fun AppNavHost(
 
         // Cities
         composable("cityList") {
-            CityListScreen(
+            CityListRoute(
+                container = container,
                 onCityClick = { cityId -> navController.navigate("cityinfo/$cityId") },
                 onProfileClick = { navController.navigate("profile") },
-                onNotificationsClick = { navController.navigate("notifications") }, // пока закомментирован экран — лучше убрать/не вызывать
+                onNotificationsClick = { },
+                onSearchClick = { navController.navigate("search") }
             )
         }
 
         composable("cityinfo/{cityId}") { backStackEntry ->
             val cityId = backStackEntry.arguments?.getString("cityId")?.toIntOrNull() ?: 1
-            CityInfoScreen(
+
+            CityInfoRoute(
+                container = container,
                 cityId = cityId,
                 onPOIClick = { poiId -> navController.navigate("poiDetail/$poiId") },
                 onBackClick = { navController.popBackStack() },
-                onFilterClick = { /* TODO */ }
+                onFilterClick = { }
             )
         }
 

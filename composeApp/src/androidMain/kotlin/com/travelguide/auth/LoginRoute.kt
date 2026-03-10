@@ -13,7 +13,7 @@ fun LoginRoute(
     onLoginSuccess: () -> Unit,
     onRegisterClick: () -> Unit
 ) {
-    val vm: AuthViewModel = viewModel(factory = simpleFactory { AuthViewModel(container.authRepository) })
+    val vm: AuthViewModel = viewModel(factory = SimpleViewModelFactory { AuthViewModel(container.authRepository) })
     val state by vm.state.collectAsState()
 
     LoginScreen(

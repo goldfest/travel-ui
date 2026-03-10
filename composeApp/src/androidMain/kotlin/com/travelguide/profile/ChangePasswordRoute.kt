@@ -3,7 +3,7 @@ package com.travelguide.profile
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.travelguide.AppContainer
-import com.travelguide.auth.simpleFactory
+import com.travelguide.auth.SimpleViewModelFactory
 import com.travelguide.ui.screens.profile.ChangePasswordScreen
 
 @Composable
@@ -13,7 +13,7 @@ fun ChangePasswordRoute(
     onDone: () -> Unit
 ) {
     val vm: ProfileViewModel = viewModel(
-        factory = simpleFactory { ProfileViewModel(container.userRepository, container.authRepository, container.sessionManager) }
+        factory = SimpleViewModelFactory { ProfileViewModel(container.userRepository, container.authRepository, container.sessionManager) }
     )
     val editState by vm.editState.collectAsState()
 

@@ -1,41 +1,80 @@
-// screens/city/CityListScreen.kt
 package com.travelguide.ui.screens.city
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.travelguide.data.mock.MockData
-import com.travelguide.ui.components.cards.CityCard
-import androidx.compose.foundation.background
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.filled.Star
+import com.travelguide.domain.models.City
 
-@OptIn(ExperimentalMaterial3Api::class)
+@androidx.compose.material3.ExperimentalMaterial3Api
 @Composable
 fun CityListScreen(
+    cities: List<City>,
+    popularCities: List<City>,
+    isLoading: Boolean,
+    errorMessage: String?,
+    onRetry: () -> Unit,
+    onSearch: (String) -> Unit,
+    onSearchClick: () -> Unit,
     onCityClick: (Int) -> Unit,
     onProfileClick: () -> Unit,
     onNotificationsClick: () -> Unit,
     isAdmin: Boolean = false
 ) {
+    var searchQuery by remember { mutableStateOf("") }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -44,9 +83,8 @@ fun CityListScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Логотип или иконка приложения
                         Icon(
-                            imageVector = Icons.Default.LocationOn, // Замените на свою иконку
+                            imageVector = Icons.Default.LocationOn,
                             contentDescription = "Логотип",
                             tint = MaterialTheme.colorScheme.primary
                         )
@@ -54,7 +92,14 @@ fun CityListScreen(
                     }
                 },
                 actions = {
-                    // Кнопка уведомлений
+                    IconButton(onClick = onSearchClick) {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = "Поиск",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
                     IconButton(onClick = onNotificationsClick) {
                         Icon(
                             Icons.Default.Notifications,
@@ -63,7 +108,6 @@ fun CityListScreen(
                         )
                     }
 
-                    // Кнопка профиля
                     IconButton(onClick = onProfileClick) {
                         Icon(
                             Icons.Default.AccountCircle,
@@ -81,7 +125,7 @@ fun CityListScreen(
         floatingActionButton = {
             if (isAdmin) {
                 FloatingActionButton(
-                    onClick = { /* TODO: Админские функции */ },
+                    onClick = { },
                     containerColor = MaterialTheme.colorScheme.secondary
                 ) {
                     Icon(
@@ -98,7 +142,6 @@ fun CityListScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Приветствие
             Column(
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -115,7 +158,23 @@ fun CityListScreen(
                 )
             }
 
-            // Рекомендованные города
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = {
+                    searchQuery = it
+                    onSearch(it)
+                },
+                label = { Text("Поиск города") },
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = null)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -132,26 +191,55 @@ fun CityListScreen(
                             style = MaterialTheme.typography.titleLarge
                         )
 
-                        // Кнопка "Все" если нужно
-                        TextButton(onClick = { /* TODO: показать все популярные */ }) {
+                        TextButton(onClick = { }) {
                             Text("Все")
                         }
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Горизонтальный список рекомендованных городов
-                    LazyRow(
-                        modifier = Modifier.height(220.dp), // Увеличил высоту для больших карточек
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
-                    ) {
-                        items(MockData.cities.filter { it.isPopular }) { city ->
-                            RecommendedCityCardHorizontal(
-                                city = city,
-                                onClick = { onCityClick(city.id) },
-                                modifier = Modifier.width(300.dp) // Широкая карточка
-                            )
+                    when {
+                        isLoading && popularCities.isEmpty() -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(180.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
+
+                        popularCities.isEmpty() -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(120.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Популярные города пока не найдены",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+
+                        else -> {
+                            LazyRow(
+                                modifier = Modifier.height(220.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                            ) {
+                                items(popularCities) { city ->
+                                    RecommendedCityCardHorizontal(
+                                        city = city,
+                                        onClick = { onCityClick(city.id) },
+                                        modifier = Modifier.width(300.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -159,7 +247,6 @@ fun CityListScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Все города
             Text(
                 text = "Все города",
                 style = MaterialTheme.typography.titleLarge,
@@ -171,11 +258,67 @@ fun CityListScreen(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(MockData.cities) { city ->
-                    EnhancedCityCard(
-                        city = city,
-                        onClick = { onCityClick(city.id) }
-                    )
+                when {
+                    isLoading && cities.isEmpty() -> {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                    }
+
+                    errorMessage != null -> {
+                        item {
+                            Card(modifier = Modifier.fillMaxWidth()) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text(
+                                        text = "Ошибка загрузки",
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = errorMessage,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    androidx.compose.material3.Button(onClick = onRetry) {
+                                        Text("Повторить")
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    cities.isEmpty() -> {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Города не найдены",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    else -> {
+                        items(cities) { city ->
+                            EnhancedCityCard(
+                                city = city,
+                                onClick = { onCityClick(city.id) }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -184,7 +327,7 @@ fun CityListScreen(
 
 @Composable
 fun RecommendedCityCard(
-    city: com.travelguide.domain.models.City,
+    city: City,
     onClick: () -> Unit
 ) {
     Card(
@@ -198,7 +341,6 @@ fun RecommendedCityCard(
                 .fillMaxWidth()
                 .height(80.dp)
         ) {
-            // Изображение города
             Box(
                 modifier = Modifier
                     .width(100.dp)
@@ -207,8 +349,6 @@ fun RecommendedCityCard(
                     .clip(RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                // Временная заглушка вместо реального изображения
-                // В реальном приложении используйте Coil или Glide
                 Text(
                     text = city.name.take(2),
                     style = MaterialTheme.typography.headlineMedium,
@@ -216,7 +356,6 @@ fun RecommendedCityCard(
                 )
             }
 
-            // Информация о городе
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -275,7 +414,7 @@ fun RecommendedCityCard(
 
 @Composable
 fun RecommendedCityCardHorizontal(
-    city: com.travelguide.domain.models.City,
+    city: City,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -291,7 +430,6 @@ fun RecommendedCityCardHorizontal(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Изображение города (большое)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -300,15 +438,14 @@ fun RecommendedCityCardHorizontal(
                     .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                // Градиент для текста
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
-                            brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                            brush = Brush.verticalGradient(
                                 colors = listOf(
-                                    androidx.compose.ui.graphics.Color.Transparent,
-                                    androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.4f)
+                                    Color.Transparent,
+                                    Color.Black.copy(alpha = 0.4f)
                                 ),
                                 startY = 0f,
                                 endY = Float.POSITIVE_INFINITY
@@ -324,28 +461,26 @@ fun RecommendedCityCardHorizontal(
                     Text(
                         text = city.name,
                         style = MaterialTheme.typography.headlineMedium,
-                        color = androidx.compose.ui.graphics.Color.White,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        color = Color.White,
+                        textAlign = TextAlign.Center
                     )
 
                     if (city.country != null) {
                         Text(
                             text = city.country,
                             style = MaterialTheme.typography.titleMedium,
-                            color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.9f)
+                            color = Color.White.copy(alpha = 0.9f)
                         )
                     }
                 }
             }
 
-            // Информация о городе
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Заголовок и бейдж популярности
                 Row(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
@@ -366,7 +501,7 @@ fun RecommendedCityCardHorizontal(
                             modifier = Modifier.size(24.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                androidx.compose.material3.Icon(
+                                Icon(
                                     imageVector = Icons.Default.Star,
                                     contentDescription = "Популярный",
                                     modifier = Modifier.size(14.dp),
@@ -377,7 +512,6 @@ fun RecommendedCityCardHorizontal(
                     }
                 }
 
-                // Описание города
                 if (!city.description.isNullOrEmpty()) {
                     Text(
                         text = city.description,
@@ -391,13 +525,11 @@ fun RecommendedCityCardHorizontal(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Дополнительная информация
                 Row(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Флаг/код страны
                     if (city.countryCode != null) {
                         Surface(
                             shape = RoundedCornerShape(8.dp),
@@ -416,7 +548,6 @@ fun RecommendedCityCardHorizontal(
                         }
                     }
 
-                    // Кнопка выбора
                     FilledTonalButton(
                         onClick = onClick,
                         modifier = Modifier.height(36.dp),
@@ -432,9 +563,10 @@ fun RecommendedCityCardHorizontal(
         }
     }
 }
+
 @Composable
 fun EnhancedCityCard(
-    city: com.travelguide.domain.models.City,
+    city: City,
     onClick: () -> Unit
 ) {
     Card(
@@ -446,7 +578,6 @@ fun EnhancedCityCard(
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Изображение города (заглушка)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -455,7 +586,6 @@ fun EnhancedCityCard(
                     .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                // В реальном приложении здесь будет изображение города
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -476,7 +606,6 @@ fun EnhancedCityCard(
                 }
             }
 
-            // Информация о городе
             Column(
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -510,7 +639,6 @@ fun EnhancedCityCard(
                     }
                 }
 
-                // Краткое описание города
                 if (!city.description.isNullOrEmpty()) {
                     Text(
                         text = city.description,
@@ -521,7 +649,6 @@ fun EnhancedCityCard(
                         lineHeight = MaterialTheme.typography.bodyMedium.fontSize * 1.2
                     )
                 } else {
-                    // Дефолтное описание если нет в данных
                     Text(
                         text = "Живописный город с богатой историей и культурой. Идеальное место для путешественников.",
                         style = MaterialTheme.typography.bodyMedium,
@@ -531,7 +658,6 @@ fun EnhancedCityCard(
                     )
                 }
 
-                // Дополнительная информация
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically

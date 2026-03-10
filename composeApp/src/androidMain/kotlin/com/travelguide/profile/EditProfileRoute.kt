@@ -8,7 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.travelguide.AppContainer
-import com.travelguide.auth.simpleFactory
+import com.travelguide.auth.SimpleViewModelFactory
 import com.travelguide.ui.screens.profile.EditProfileScreen
 import java.io.ByteArrayOutputStream
 
@@ -33,7 +33,7 @@ fun EditProfileRoute(
     onSaved: () -> Unit
 ) {
     val vm: ProfileViewModel = viewModel(
-        factory = simpleFactory {
+        factory = SimpleViewModelFactory {
             ProfileViewModel(
                 container.userRepository,
                 container.authRepository,

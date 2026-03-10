@@ -11,7 +11,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.travelguide.AppContainer
-import com.travelguide.auth.simpleFactory
+import com.travelguide.auth.SimpleViewModelFactory
 import com.travelguide.ui.screens.profile.ProfileScreen
 
 @Composable
@@ -28,7 +28,7 @@ fun ProfileRoute(
     onAdminClick: () -> Unit
 ) {
     val vm: ProfileViewModel = viewModel(
-        factory = simpleFactory {
+        factory = SimpleViewModelFactory {
             ProfileViewModel(
                 container.userRepository,
                 container.authRepository,
