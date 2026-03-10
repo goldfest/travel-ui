@@ -5,15 +5,26 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Collections
+import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Password
+import androidx.compose.material.icons.filled.RateReview
+import androidx.compose.material.icons.filled.Route
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.travelguide.domain.models.User
 
@@ -21,9 +32,6 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.layout.ContentScale
-
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,6 +43,7 @@ fun ProfileScreen(
     onFavoritesClick: () -> Unit,
     onRoutesClick: () -> Unit,
     onCollectionsClick: () -> Unit,
+    onMyReviewsClick: () -> Unit,
     onAdminClick: () -> Unit,
     onChangePasswordClick: () -> Unit,
     onDeleteAccountClick: () -> Unit,
@@ -64,7 +73,6 @@ fun ProfileScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp)
         ) {
-            // Header карточка
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -92,7 +100,6 @@ fun ProfileScreen(
                                 model = ImageRequest.Builder(context)
                                     .data(url)
                                     .crossfade(true)
-                                    // ключи кеша = сам url, чтобы при смене url точно обновлялось
                                     .memoryCacheKey(url)
                                     .diskCacheKey(url)
                                     .build(),
@@ -102,7 +109,10 @@ fun ProfileScreen(
                                 onError = { avatarFailed = true }
                             )
                         } else {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Text(
                                     text = initial,
                                     style = MaterialTheme.typography.headlineMedium,
@@ -155,34 +165,37 @@ fun ProfileScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // Быстрые действия
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
+            ) {
                 Column {
-                    Divider()
                     ProfileNavItem("Избранное", Icons.Default.Favorite, onFavoritesClick)
                     Divider()
                     ProfileNavItem("Мои маршруты", Icons.Default.Route, onRoutesClick)
                     Divider()
                     ProfileNavItem("Мои коллекции", Icons.Default.Collections, onCollectionsClick)
+                    Divider()
+                    ProfileNavItem("Мои отзывы", Icons.Default.RateReview, onMyReviewsClick)
                 }
             }
 
             Spacer(Modifier.height(16.dp))
 
-            // Настройки (заглушки)
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
+            ) {
                 Column {
                     ListItem(
-                        headlineContent = { Text("Темная тема") },
-                        leadingContent = { Icon(Icons.Default.DarkMode, contentDescription = null) },
-                        trailingContent = { Switch(checked = false, onCheckedChange = { /* TODO */ }) }
-                    )
-                    Divider()
-                    ListItem(
                         headlineContent = { Text("Уведомления") },
-                        leadingContent = { Icon(Icons.Default.Notifications, contentDescription = null) },
-                        trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
-                        modifier = Modifier.clickable { /* TODO */ }
+                        leadingContent = {
+                            Icon(Icons.Default.Notifications, contentDescription = null)
+                        },
+                        trailingContent = {
+                            Icon(Icons.Default.ChevronRight, contentDescription = null)
+                        },
+                        modifier = Modifier.clickable { }
                     )
                 }
             }
@@ -191,7 +204,9 @@ fun ProfileScreen(
                 Spacer(Modifier.height(16.dp))
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.15f)),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.15f)
+                    ),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     ProfileNavItem(
@@ -205,7 +220,10 @@ fun ProfileScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
+            ) {
                 Column {
                     ProfileNavItem(
                         title = "Сменить пароль",

@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.travelguide.AppContainer
 import com.travelguide.auth.SimpleViewModelFactory
+import com.travelguide.poi.PoiViewModel
 import com.travelguide.ui.screens.city.CityInfoScreen
 
 @Composable
@@ -14,27 +15,37 @@ fun CityInfoRoute(
     container: AppContainer,
     cityId: Int,
     onPOIClick: (Int) -> Unit,
-    onBackClick: () -> Unit,
-    onFilterClick: () -> Unit
+    onBackClick: () -> Unit
 ) {
-    val vm: CityViewModel = viewModel(
+    val cityVm: CityViewModel = viewModel(
         key = "city-$cityId",
         factory = SimpleViewModelFactory { CityViewModel(container.cityRepository) }
     )
 
-    val state by vm.detailsState.collectAsState()
+    val poiVm: PoiViewModel = viewModel(
+        key = "city-pois-$cityId",
+        factory = SimpleViewModelFactory { PoiViewModel(container.poiRepository) }
+    )
+
+    val cityState by cityVm.detailsState.collectAsState()
+    val poiState by poiVm.listState.collectAsState()
 
     LaunchedEffect(cityId) {
-        vm.loadCity(cityId)
+        cityVm.loadCity(cityId)
+        poiVm.loadPoisByCity(cityId)
     }
 
     CityInfoScreen(
-        city = state.city,
-        isLoading = state.isLoading,
-        errorMessage = state.errorMessage,
-        onRetry = { vm.loadCity(cityId) },
+        city = cityState.city,
+        isLoading = cityState.isLoading,
+        errorMessage = cityState.errorMessage,
+        onRetry = { cityVm.loadCity(cityId) },
+        pois = poiState.pois,
+        poiTypes = poiState.poiTypes,
+        isPoisLoading = poiState.isLoading,
+        poisErrorMessage = poiState.errorMessage,
+        onRetryPois = { poiVm.loadPoisByCity(cityId) },
         onPOIClick = onPOIClick,
-        onBackClick = onBackClick,
-        onFilterClick = onFilterClick
+        onBackClick = onBackClick
     )
 }

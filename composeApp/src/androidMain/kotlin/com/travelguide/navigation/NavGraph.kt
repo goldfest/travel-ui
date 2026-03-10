@@ -29,6 +29,14 @@ import com.travelguide.ui.screens.route.RouteMapScreen
 import com.travelguide.ui.screens.search.SearchScreen
 import com.travelguide.city.CityInfoRoute
 import com.travelguide.city.CityListRoute
+import com.travelguide.poi.POIListRoute
+import com.travelguide.poi.PoiDetailRoute
+import com.travelguide.review.CreateReportRoute
+import com.travelguide.review.CreateReviewRoute
+import com.travelguide.review.EditReviewRoute
+import com.travelguide.review.MyReviewsRoute
+import com.travelguide.review.ReviewsRoute
+import com.travelguide.search.SearchRoute
 
 @Composable
 fun AppNavHost(
@@ -83,64 +91,101 @@ fun AppNavHost(
                 container = container,
                 cityId = cityId,
                 onPOIClick = { poiId -> navController.navigate("poiDetail/$poiId") },
-                onBackClick = { navController.popBackStack() },
-                onFilterClick = { }
+                onBackClick = { navController.popBackStack() }
             )
         }
 
         // POI
         composable("poiDetail/{poiId}") { backStackEntry ->
             val poiId = backStackEntry.arguments?.getString("poiId")?.toIntOrNull() ?: 1
-            POIDetailScreen(
+
+            PoiDetailRoute(
+                container = container,
                 poiId = poiId,
                 onBackClick = { navController.popBackStack() },
-                onAddToRoute = { /* TODO */ },
-                onAddToFavorite = { /* TODO */ },
+                onAddToRoute = { },
+                onAddToFavorite = { },
                 onWriteReview = { navController.navigate("createReview/$poiId") },
                 onViewReviews = { navController.navigate("reviews/$poiId") },
                 onReportProblem = { navController.navigate("createReport/$poiId") }
             )
         }
 
+        composable("poiList/{cityId}") { backStackEntry ->
+            val cityId = backStackEntry.arguments?.getString("cityId")?.toIntOrNull() ?: 1
+
+            POIListRoute(
+                container = container,
+                cityId = cityId,
+                onPOIClick = { poiId -> navController.navigate("poiDetail/$poiId") },
+                onBackClick = { navController.popBackStack() },
+                onFilterClick = { }
+            )
+        }
+
         // Reviews
         composable("reviews/{poiId}") { backStackEntry ->
             val poiId = backStackEntry.arguments?.getString("poiId")?.toIntOrNull() ?: 1
-            ReviewsScreen(
+            ReviewsRoute(
+                container = container,
                 poiId = poiId,
                 onBackClick = { navController.popBackStack() },
-                onWriteReview = { navController.navigate("createReview/$poiId") }
+                onWriteReview = { navController.navigate("createReview/$poiId") },
+                onReportReview = { /* позже можно route для review report */ }
             )
         }
 
         composable("createReview/{poiId}") { backStackEntry ->
             val poiId = backStackEntry.arguments?.getString("poiId")?.toIntOrNull() ?: 1
-            CreateReviewScreen(
+            CreateReviewRoute(
+                container = container,
                 poiId = poiId,
                 onBackClick = { navController.popBackStack() },
-                onSubmit = { navController.popBackStack() }
+                onSubmitted = { navController.popBackStack() }
             )
         }
 
         composable("createReport/{poiId}") { backStackEntry ->
             val poiId = backStackEntry.arguments?.getString("poiId")?.toIntOrNull() ?: 1
-            CreateReportScreen(
+            CreateReportRoute(
+                container = container,
                 poiId = poiId,
                 onBackClick = { navController.popBackStack() },
-                onSubmit = { navController.popBackStack() }
+                onSubmitted = { navController.popBackStack() }
+            )
+        }
+
+        composable("myReviews") {
+            MyReviewsRoute(
+                container = container,
+                onBackClick = { navController.popBackStack() },
+                onEditReview = { reviewId -> navController.navigate("editReview/$reviewId") }
+            )
+        }
+
+        composable("editReview/{reviewId}") { backStackEntry ->
+            val reviewId = backStackEntry.arguments?.getString("reviewId")?.toIntOrNull() ?: 1
+            EditReviewRoute(
+                container = container,
+                reviewId = reviewId,
+                onBackClick = { navController.popBackStack() },
+                onSaved = { navController.popBackStack() }
             )
         }
 
         // Search
         composable("search") {
-            SearchScreen(
+            SearchRoute(
+                container = container,
                 onBackClick = { navController.popBackStack() },
-                onPOIClick = { poiId -> navController.navigate("poiDetail/$poiId") }
+                onPOIClick = { poiId -> navController.navigate("poiDetail/$poiId") },
+                onCityClick = { cityId -> navController.navigate("cityinfo/$cityId") }
             )
         }
 
         // Routes
         composable("routes") {
-            RouteListScreen(
+           RouteListScreen(
                 onBackClick = { navController.popBackStack() },
                 onRouteClick = { routeId -> navController.navigate("routeDetail/$routeId") },
                 onCreateRoute = { navController.navigate("createRoute") }
@@ -148,7 +193,7 @@ fun AppNavHost(
         }
 
         composable("createRoute") {
-            CreateRouteScreen(
+           CreateRouteScreen(
                 onBackClick = { navController.popBackStack() },
                 onSubmit = { routeId ->
                     navController.popBackStack()
@@ -159,7 +204,7 @@ fun AppNavHost(
 
         composable("routeDetail/{routeId}") { backStackEntry ->
             val routeId = backStackEntry.arguments?.getString("routeId")?.toIntOrNull() ?: 1
-            RouteDetailScreen(
+           RouteDetailScreen(
                 routeId = routeId,
                 onBackClick = { navController.popBackStack() },
                 onEditClick = { /* TODO */ },
@@ -170,7 +215,7 @@ fun AppNavHost(
 
         composable("routeMap/{routeId}") { backStackEntry ->
             val routeId = backStackEntry.arguments?.getString("routeId")?.toIntOrNull() ?: 1
-            RouteMapScreen(
+           RouteMapScreen(
                 routeId = routeId,
                 onBackClick = { navController.popBackStack() },
                 onViewList = { navController.popBackStack() }
@@ -186,7 +231,8 @@ fun AppNavHost(
         }
 
         composable("collections") {
-            CollectionsScreen(onBackClick = { navController.popBackStack() })
+            CollectionsScreen(
+                onBackClick = { navController.popBackStack() })
         }
 
         // Profile
@@ -203,7 +249,8 @@ fun AppNavHost(
                 onEditClick = { navController.navigate("editProfile") },
                 onAdminClick = { navController.navigate("admin") },
                 onChangePasswordClick = { navController.navigate("changePassword") },
-                onDeleteAccountClick = { navController.navigate("deleteAccount") }
+                onDeleteAccountClick = { navController.navigate("deleteAccount") },
+                onMyReviewsClick = { navController.navigate("myReviews") }
             )
         }
 

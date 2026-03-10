@@ -22,6 +22,7 @@ fun ProfileRoute(
     onFavoritesClick: () -> Unit,
     onRoutesClick: () -> Unit,
     onCollectionsClick: () -> Unit,
+    onMyReviewsClick: () -> Unit,
     onEditClick: () -> Unit,
     onChangePasswordClick: () -> Unit,
     onDeleteAccountClick: () -> Unit,
@@ -38,17 +39,12 @@ fun ProfileRoute(
     )
 
     val state by vm.state.collectAsState()
-
-    // если у тебя уже есть events/snackbar — можно подключить позже
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Загружаем на вход в экран + на возврат (resume),
-    // но НЕ показываем "ошибка" во время логаута/редиректа
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                // не перезагружаем, если уже выходим
                 if (!state.isLoggingOut) vm.loadMe()
             }
         }
@@ -56,7 +52,6 @@ fun ProfileRoute(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    // На первый заход (чтобы не ждать ON_RESUME в некоторых кейсах навигации)
     LaunchedEffect(Unit) {
         vm.loadMe()
     }
@@ -72,21 +67,18 @@ fun ProfileRoute(
             val user = state.user
 
             when {
-                // 1) во время logout вообще ничего не “ругаем” — просто спиннер
                 state.isLoggingOut -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
                 }
 
-                // 2) если нет user и идет загрузка — показываем лоадер (без "не удалось")
                 state.isLoading && user == null -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
                 }
 
-                // 3) профиль есть — рисуем экран
                 user != null -> {
                     ProfileScreen(
                         user = user,
@@ -96,28 +88,25 @@ fun ProfileRoute(
                         onFavoritesClick = onFavoritesClick,
                         onRoutesClick = onRoutesClick,
                         onCollectionsClick = onCollectionsClick,
+                        onMyReviewsClick = onMyReviewsClick,
                         onAdminClick = onAdminClick,
                         onChangePasswordClick = onChangePasswordClick,
                         onDeleteAccountClick = onDeleteAccountClick
                     )
                 }
 
-                // 4) ошибокку показываем только если:
-                // - уже пытались загрузить (hasLoadedOnce)
-                // - и это не логаут
                 state.hasLoadedOnce -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(state.error ?: "Не удалось загрузить профиль")
                             Spacer(Modifier.height(12.dp))
-                            Button(
-                                onClick = { vm.loadMe(force = true) }
-                            ) { Text("Повторить") }
+                            Button(onClick = { vm.loadMe(force = true) }) {
+                                Text("Повторить")
+                            }
                         }
                     }
                 }
 
-                // 5) начальное состояние (пока даже не начинали) — просто лоадер
                 else -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()

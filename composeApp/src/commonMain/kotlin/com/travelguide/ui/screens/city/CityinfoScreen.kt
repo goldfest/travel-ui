@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.travelguide.ui.screens.city
 
 import androidx.compose.foundation.background
@@ -8,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -19,11 +20,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.LocationOff
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -56,26 +57,28 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.travelguide.domain.models.City
 import com.travelguide.domain.models.POI
+import com.travelguide.domain.models.POIType
 import com.travelguide.ui.components.cards.POICard
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CityInfoScreen(
     city: City?,
     isLoading: Boolean,
     errorMessage: String?,
     onRetry: () -> Unit,
+    pois: List<POI>,
+    poiTypes: List<POIType>,
+    isPoisLoading: Boolean,
+    poisErrorMessage: String?,
+    onRetryPois: () -> Unit,
     onPOIClick: (Int) -> Unit,
-    onBackClick: () -> Unit,
-    onFilterClick: () -> Unit
+    onBackClick: () -> Unit
 ) {
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var isFavoriteFilter by remember { mutableStateOf(false) }
 
-    val allPois = emptyList<POI>()
-
-    val filteredPOIs = allPois.filter { poi ->
+    val filteredPOIs = pois.filter { poi ->
         (selectedCategory == null || poi.poiType?.code == selectedCategory) &&
                 (searchQuery.isEmpty() ||
                         poi.name.contains(searchQuery, ignoreCase = true) ||
@@ -96,7 +99,7 @@ fun CityInfoScreen(
                         )
                     ) {
                         Icon(
-                            Icons.Default.ArrowBack,
+                            Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Назад",
                             tint = Color.White
                         )
@@ -251,7 +254,7 @@ fun CityInfoScreen(
                                     horizontalArrangement = Arrangement.SpaceAround
                                 ) {
                                     StatItem(
-                                        value = filteredPOIs.size.toString(),
+                                        value = pois.size.toString(),
                                         label = "Объектов"
                                     )
                                     StatItem(
@@ -291,25 +294,27 @@ fun CityInfoScreen(
                                 modifier = Modifier.fillMaxWidth()
                             )
 
-                            Text(
-                                text = "Категории",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                            if (poiTypes.isNotEmpty()) {
+                                Text(
+                                    text = "Категории",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
 
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                items(CATEGORIES) { category ->
-                                    CategoryChip(
-                                        category = category,
-                                        isSelected = selectedCategory == category.code,
-                                        onClick = {
-                                            selectedCategory =
-                                                if (selectedCategory == category.code) null else category.code
-                                        }
-                                    )
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    items(poiTypes) { category ->
+                                        CategoryChip(
+                                            category = category,
+                                            isSelected = selectedCategory == category.code,
+                                            onClick = {
+                                                selectedCategory =
+                                                    if (selectedCategory == category.code) null else category.code
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -327,7 +332,7 @@ fun CityInfoScreen(
                                 text = if (selectedCategory == null) {
                                     "Все объекты"
                                 } else {
-                                    CATEGORIES.firstOrNull { it.code == selectedCategory }?.name ?: "Объекты"
+                                    poiTypes.firstOrNull { it.code == selectedCategory }?.name ?: "Объекты"
                                 },
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold
@@ -341,50 +346,93 @@ fun CityInfoScreen(
                         }
                     }
 
-                    if (filteredPOIs.isEmpty()) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(32.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    when {
+                        isPoisLoading && pois.isEmpty() -> {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(
-                                        Icons.Default.LocationOff,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(64.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
-                                        text = "Объекты пока не загружены",
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
-                                    Text(
-                                        text = "Сейчас экран города уже подключен к backend. Следующий шаг — привязать достопримечательности.",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        textAlign = TextAlign.Center
-                                    )
+                                    CircularProgressIndicator()
                                 }
                             }
                         }
-                    } else {
-                        items(filteredPOIs) { poi ->
-                            POICard(
-                                poi = poi,
-                                onClick = { onPOIClick(poi.id) },
-                                onFavoriteClick = { },
-                                isFavorite = isFavoriteFilter,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                            )
+
+                        poisErrorMessage != null -> {
+                            item {
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp)
+                                ) {
+                                    Column(modifier = Modifier.padding(16.dp)) {
+                                        Text(
+                                            text = "Ошибка загрузки достопримечательностей",
+                                            style = MaterialTheme.typography.titleMedium
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = poisErrorMessage,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Button(onClick = onRetryPois) {
+                                            Text("Повторить")
+                                        }
+                                    }
+                                }
+                            }
                         }
 
-                        item {
-                            Spacer(modifier = Modifier.height(80.dp))
+                        filteredPOIs.isEmpty() -> {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.LocationOff,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(64.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            text = "Объекты не найдены",
+                                            style = MaterialTheme.typography.titleMedium
+                                        )
+                                        Text(
+                                            text = "Попробуйте изменить фильтры или поисковый запрос",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        else -> {
+                            items(filteredPOIs) { poi ->
+                                POICard(
+                                    poi = poi,
+                                    onClick = { onPOIClick(poi.id) },
+                                    onFavoriteClick = { },
+                                    isFavorite = isFavoriteFilter,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                )
+                            }
+
+                            item {
+                                Spacer(modifier = Modifier.height(80.dp))
+                            }
                         }
                     }
                 }
@@ -484,7 +532,7 @@ private fun StatItem(value: String, label: String) {
 
 @Composable
 private fun CategoryChip(
-    category: Category,
+    category: POIType,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
@@ -520,16 +568,3 @@ private fun CategoryChip(
         )
     )
 }
-
-private val CATEGORIES = listOf(
-    Category("attraction", "Что посмотреть", "🏛️"),
-    Category("restaurant", "Еда", "🍽️"),
-    Category("hotel", "Жилье", "🏨"),
-    Category("toilet", "Туалеты", "🚻"),
-)
-
-private data class Category(
-    val code: String,
-    val name: String,
-    val icon: String
-)
