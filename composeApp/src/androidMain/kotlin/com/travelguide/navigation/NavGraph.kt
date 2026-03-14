@@ -13,22 +13,15 @@ import com.travelguide.profile.DeleteAccountRoute
 import com.travelguide.profile.EditProfileRoute
 import com.travelguide.profile.ProfileRoute
 import com.travelguide.ui.screens.admin.AdminScreen
-import com.travelguide.ui.screens.city.CityInfoScreen
-import com.travelguide.ui.screens.city.CityListScreen
-import com.travelguide.ui.screens.personalisation.CollectionsScreen
-import com.travelguide.ui.screens.personalisation.FavoritesScreen
-import com.travelguide.ui.screens.poi.POIDetailScreen
-import com.travelguide.ui.screens.profile.ProfileScreen
-import com.travelguide.ui.screens.review.CreateReportScreen
-import com.travelguide.ui.screens.review.CreateReviewScreen
-import com.travelguide.ui.screens.review.ReviewsScreen
 import com.travelguide.ui.screens.route.CreateRouteScreen
 import com.travelguide.ui.screens.route.RouteDetailScreen
 import com.travelguide.ui.screens.route.RouteListScreen
 import com.travelguide.ui.screens.route.RouteMapScreen
-import com.travelguide.ui.screens.search.SearchScreen
 import com.travelguide.city.CityInfoRoute
 import com.travelguide.city.CityListRoute
+import com.travelguide.favorite.FavoritesRoute
+import com.travelguide.personalisation.CollectionEditRoute
+import com.travelguide.personalisation.CollectionsRoute
 import com.travelguide.poi.POIListRoute
 import com.travelguide.poi.PoiDetailRoute
 import com.travelguide.review.CreateReportRoute
@@ -178,8 +171,7 @@ fun AppNavHost(
             SearchRoute(
                 container = container,
                 onBackClick = { navController.popBackStack() },
-                onPOIClick = { poiId -> navController.navigate("poiDetail/$poiId") },
-                onCityClick = { cityId -> navController.navigate("cityinfo/$cityId") }
+                onPOIClick = { poiId -> navController.navigate("poiDetail/$poiId") }
             )
         }
 
@@ -224,17 +216,36 @@ fun AppNavHost(
 
         // Personalization
         composable("favorites") {
-            FavoritesScreen(
+            FavoritesRoute(
+                container = container,
                 onBackClick = { navController.popBackStack() },
                 onPOIClick = { poiId -> navController.navigate("poiDetail/$poiId") }
             )
         }
 
         composable("collections") {
-            CollectionsScreen(
-                onBackClick = { navController.popBackStack() })
+            CollectionsRoute(
+                container = container,
+                onBackClick = { navController.popBackStack() },
+                onEditCollection = { collectionId ->
+                    navController.navigate("collectionEdit/$collectionId")
+                }
+            )
         }
 
+        composable("collectionEdit/{collectionId}") { backStackEntry ->
+            val collectionId = backStackEntry.arguments?.getString("collectionId")?.toIntOrNull() ?: 1
+
+            CollectionEditRoute(
+                container = container,
+                collectionId = collectionId,
+                onBackClick = { navController.popBackStack() },
+                onDeleted = {
+                    navController.popBackStack()
+                },
+                onCollectionUpdated = { }
+            )
+        }
         // Profile
         composable("profile") {
             ProfileRoute(

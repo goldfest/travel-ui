@@ -1,70 +1,64 @@
-// screens/personalisation/CollectionsScreen.kt
 package com.travelguide.ui.screens.personalisation
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Collections
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.travelguide.domain.models.Collection
-import androidx.compose.foundation.lazy.LazyColumn
-import com.travelguide.domain.models.Route
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.background
-import androidx.compose.ui.text.style.TextOverflow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CollectionsScreen(
-    onBackClick: () -> Unit
+    collections: List<Collection>,
+    isLoading: Boolean,
+    errorMessage: String?,
+    onBackClick: () -> Unit,
+    onCreateCollection: (String, String?) -> Unit,
+    onDeleteCollection: (Int) -> Unit,
+    onEditCollection: (Int) -> Unit,
+    onRetry: () -> Unit
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
     var selectedCollection by remember { mutableStateOf<Collection?>(null) }
-
-    val collections = listOf(
-        Collection(
-            id = 1,
-            name = "Лучшие рестораны Москвы",
-            description = "Гастрономические открытия",
-            coverUrl = null,
-            userId = 1,
-            pois = listOf()
-        ),
-        Collection(
-            id = 2,
-            name = "Исторические места",
-            description = "Для любителей архитектуры",
-            coverUrl = null,
-            userId = 1,
-            pois = listOf()
-        ),
-        Collection(
-            id = 3,
-            name = "Парки для прогулок",
-            description = "Зеленые зоны города",
-            coverUrl = null,
-            userId = 1,
-            pois = listOf()
-        ),
-        Collection(
-            id = 4,
-            name = "Кафе с Wi-Fi",
-            description = "Рабочие места",
-            coverUrl = null,
-            userId = 1,
-            pois = listOf()
-        )
-    )
 
     Scaffold(
         topBar = {
@@ -72,7 +66,7 @@ fun CollectionsScreen(
                 title = { Text("Мои коллекции") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
                     }
                 },
                 actions = {
@@ -83,78 +77,112 @@ fun CollectionsScreen(
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            if (collections.isEmpty()) {
-                // Пустой экран
+        when {
+            isLoading -> {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Collections,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "Коллекций пока нет",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            text = "Создайте свою первую коллекцию мест",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Button(onClick = { showCreateDialog = true }) {
-                            Text("Создать коллекцию")
+                    CircularProgressIndicator()
+                }
+            }
+
+            errorMessage != null -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(errorMessage)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(onClick = onRetry) {
+                            Text("Повторить")
                         }
                     }
                 }
-            } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+            }
+
+            else -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
                 ) {
-                    items(collections) { collection ->
-                        CollectionCard(
-                            collection = collection,
-                            onClick = { selectedCollection = collection }
-                        )
+                    if (collections.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Collections,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(64.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "Коллекций пока нет",
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Text(
+                                    text = "Создайте свою первую коллекцию мест",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Button(onClick = { showCreateDialog = true }) {
+                                    Text("Создать коллекцию")
+                                }
+                            }
+                        }
+                    } else {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(collections) { collection ->
+                                CollectionCard(
+                                    collection = collection,
+                                    onClick = { selectedCollection = collection }
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
     }
 
-    // Диалог создания коллекции
     if (showCreateDialog) {
         CreateCollectionDialog(
             onDismiss = { showCreateDialog = false },
             onCreate = { name, description ->
-                // TODO: создать коллекцию
+                onCreateCollection(name, description)
                 showCreateDialog = false
             }
         )
     }
 
-    // Диалог просмотра коллекции
     selectedCollection?.let { collection ->
         CollectionDetailDialog(
             collection = collection,
             onDismiss = { selectedCollection = null },
-            onEdit = { /* TODO: редактирование */ },
-            onDelete = { /* TODO: удаление */ }
+            onEdit = {
+                selectedCollection = null
+                onEditCollection(collection.id)
+            },
+            onDelete = {
+                onDeleteCollection(collection.id)
+            }
         )
     }
 }
@@ -173,7 +201,6 @@ fun CollectionCard(
                 .fillMaxWidth()
                 .height(180.dp)
         ) {
-            // Обложка
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -185,7 +212,6 @@ fun CollectionCard(
                 contentAlignment = Alignment.Center
             ) {
                 if (collection.coverUrl != null) {
-                    // TODO: Загрузка изображения
                     Text("Картинка")
                 } else {
                     Icon(
@@ -196,7 +222,6 @@ fun CollectionCard(
                     )
                 }
 
-                // Количество объектов
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
@@ -207,7 +232,7 @@ fun CollectionCard(
                         )
                 ) {
                     Text(
-                        text = "${collection.pois.size}",
+                        text = "${collection.poiCount}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -215,7 +240,6 @@ fun CollectionCard(
                 }
             }
 
-            // Информация
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -251,7 +275,6 @@ fun CreateCollectionDialog(
 ) {
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    var coverUrl by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -277,38 +300,16 @@ fun CreateCollectionDialog(
                         .height(80.dp),
                     maxLines = 3
                 )
-
-                // Обложка
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = { /* TODO: загрузить обложку */ },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Добавить обложку")
-                    }
-
-                    if (coverUrl != null) {
-                        IconButton(
-                            onClick = { coverUrl = null },
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(Icons.Default.Delete, contentDescription = "Удалить")
-                        }
-                    }
-                }
             }
         },
         confirmButton = {
             TextButton(
                 onClick = {
-                    if (name.isNotEmpty()) {
-                        onCreate(name, if (description.isEmpty()) null else description)
+                    if (name.isNotBlank()) {
+                        onCreate(name, description.ifBlank { null })
                     }
                 },
-                enabled = name.isNotEmpty()
+                enabled = name.isNotBlank()
             ) {
                 Text("Создать")
             }
@@ -321,7 +322,6 @@ fun CreateCollectionDialog(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CollectionDetailDialog(
     collection: Collection,
@@ -344,66 +344,10 @@ fun CollectionDetailDialog(
                 }
 
                 Text(
-                    text = "Объектов: ${collection.pois.size}",
+                    text = "Объектов: ${collection.poiCount}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-
-                if (collection.pois.isEmpty()) {
-                    Text(
-                        text = "В коллекции пока нет объектов",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else {
-                    // Список объектов
-                    LazyColumn(
-                        modifier = Modifier.height(200.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(collection.pois.take(5)) { poi ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .background(
-                                            MaterialTheme.colorScheme.surfaceVariant,
-                                            shape = RoundedCornerShape(8.dp)
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(poi.poiType?.icon ?: "📍")
-                                }
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = poi.name,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        maxLines = 1
-                                    )
-                                    Text(
-                                        text = poi.poiType?.name ?: "Объект",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-
-                        if (collection.pois.size > 5) {
-                            item {
-                                Text(
-                                    text = "и еще ${collection.pois.size - 5} объектов...",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
             }
         },
         confirmButton = {
@@ -411,6 +355,7 @@ fun CollectionDetailDialog(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 TextButton(onClick = onEdit) {
+
                     Text("Редактировать")
                 }
                 TextButton(
@@ -422,8 +367,15 @@ fun CollectionDetailDialog(
                         contentColor = MaterialTheme.colorScheme.error
                     )
                 ) {
+                    Icon(Icons.Default.Delete, contentDescription = null)
+                    Spacer(modifier = Modifier.padding(2.dp))
                     Text("Удалить")
                 }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Закрыть")
             }
         }
     )

@@ -1,13 +1,25 @@
 package com.travelguide.poi
 
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.travelguide.AppContainer
 import com.travelguide.auth.SimpleViewModelFactory
+import com.travelguide.personalisation.CollectionPickerViewModel
+import com.travelguide.ui.screens.personalisation.AddToCollectionDialog
+import com.travelguide.ui.screens.personalisation.CollectionActionDialog
+import com.travelguide.ui.screens.personalisation.CreateCollectionDialog
 import com.travelguide.ui.screens.poi.POIDetailScreen
+import kotlinx.coroutines.launch
 
 @Composable
 fun PoiDetailRoute(
@@ -20,27 +32,130 @@ fun PoiDetailRoute(
     onViewReviews: () -> Unit,
     onReportProblem: () -> Unit
 ) {
-    val vm: PoiViewModel = viewModel(
+    val poiVm: PoiViewModel = viewModel(
         key = "poi-$poiId",
-        factory = SimpleViewModelFactory { PoiViewModel(container.poiRepository) }
+        factory = SimpleViewModelFactory {
+            PoiViewModel(
+                repository = container.poiRepository,
+                favoriteRepository = container.favoriteRepository
+            )
+        }
     )
 
-    val state by vm.detailsState.collectAsState()
+    val collectionVm: CollectionPickerViewModel = viewModel(
+        key = "collection-picker-$poiId",
+        factory = SimpleViewModelFactory {
+            CollectionPickerViewModel(container.collectionRepository)
+        }
+    )
+
+    val poiState by poiVm.detailsState.collectAsState()
+    val collectionState by collectionVm.state.collectAsState()
+
+    var showActionDialog by remember { mutableStateOf(false) }
+    var showCollectionDialog by remember { mutableStateOf(false) }
+    var showCreateDialog by remember { mutableStateOf(false) }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(poiId) {
-        vm.loadPoi(poiId)
+        poiVm.loadPoi(poiId)
     }
 
-    POIDetailScreen(
-        poi = state.poi,
-        isLoading = state.isLoading,
-        errorMessage = state.errorMessage,
-        onRetry = { vm.loadPoi(poiId) },
-        onBackClick = onBackClick,
-        onAddToRoute = onAddToRoute,
-        onAddToFavorite = onAddToFavorite,
-        onWriteReview = onWriteReview,
-        onViewReviews = onViewReviews,
-        onReportProblem = onReportProblem
-    )
+    Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { _ ->
+        POIDetailScreen(
+            poi = poiState.poi,
+            isLoading = poiState.isLoading,
+            isFavorite = poiState.isFavorite,
+            errorMessage = poiState.errorMessage,
+            onRetry = { poiVm.loadPoi(poiId) },
+            onBackClick = onBackClick,
+            onAddToRoute = onAddToRoute,
+            onAddToCollection = {
+                showActionDialog = true
+            },
+            onAddToFavorite = {
+                poiVm.toggleFavorite()
+                onAddToFavorite(!poiState.isFavorite)
+            },
+            onWriteReview = onWriteReview,
+            onViewReviews = onViewReviews,
+            onReportProblem = onReportProblem
+        )
+    }
+
+    if (showActionDialog) {
+        CollectionActionDialog(
+            onDismiss = { showActionDialog = false },
+            onAddToExisting = {
+                showActionDialog = false
+                collectionVm.loadCollections()
+                if (collectionState.collections.isEmpty()) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("У вас пока нет коллекций")
+                    }
+                } else {
+                    showCollectionDialog = true
+                }
+            },
+            onCreateNew = {
+                showActionDialog = false
+                showCreateDialog = true
+            }
+        )
+    }
+
+    if (showCollectionDialog) {
+        AddToCollectionDialog(
+            isLoading = collectionState.isLoading,
+            collections = collectionState.collections,
+            errorMessage = collectionState.errorMessage,
+            onDismiss = {
+                showCollectionDialog = false
+                collectionVm.clearMessages()
+            },
+            onSelectCollection = { collection ->
+                collectionVm.addPoiToCollection(
+                    collectionId = collection.id,
+                    poiId = poiId,
+                    onSuccess = {
+                        showCollectionDialog = false
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Объект добавлен в коллекцию")
+                        }
+                    }
+                )
+            }
+        )
+    }
+
+    if (showCreateDialog) {
+        CreateCollectionDialog(
+            onDismiss = { showCreateDialog = false },
+            onCreate = { name, description ->
+                scope.launch {
+                    runCatching {
+                        val created = container.collectionRepository.createCollection(
+                            name = name,
+                            description = description
+                        )
+                        container.collectionRepository.addPoiToCollection(
+                            collectionId = created.id,
+                            poiId = poiId
+                        )
+                    }.onSuccess {
+                        showCreateDialog = false
+                        snackbarHostState.showSnackbar("Коллекция создана, объект добавлен")
+                    }.onFailure { e ->
+                        snackbarHostState.showSnackbar(
+                            e.message ?: "Не удалось создать коллекцию"
+                        )
+                    }
+                }
+            }
+        )
+    }
 }

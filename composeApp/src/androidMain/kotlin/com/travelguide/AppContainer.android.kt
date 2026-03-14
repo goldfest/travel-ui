@@ -6,23 +6,29 @@ import com.russhwolf.settings.SharedPreferencesSettings
 import com.travelguide.auth.AuthRepository
 import com.travelguide.auth.TokenStorage
 import com.travelguide.city.CityRepository
+import com.travelguide.favorite.FavoriteRepository
 import com.travelguide.network.HttpClientFactory
 import com.travelguide.network.auth.AuthApi
 import com.travelguide.network.city.CityApi
-import com.travelguide.network.user.UserApi
-import com.travelguide.profile.UserRepository
-import com.travelguide.session.SessionManager
-
+import com.travelguide.network.personalization.CollectionApi
+import com.travelguide.network.personalization.FavoriteApi
+import com.travelguide.network.personalization.SearchHistoryApi
 import com.travelguide.network.poi.PoiApi
 import com.travelguide.network.review.ReportApi
 import com.travelguide.network.review.ReviewApi
+import com.travelguide.network.user.UserApi
+import com.travelguide.personalisation.CollectionRepository
 import com.travelguide.poi.PoiRepository
+import com.travelguide.profile.UserRepository
 import com.travelguide.review.ReportRepository
 import com.travelguide.review.ReviewRepository
+import com.travelguide.search.SearchHistoryRepository
+import com.travelguide.session.SessionManager
 
 class AppContainer(context: Context) {
 
     val sessionManager = SessionManager()
+
     private val settings: Settings = SharedPreferencesSettings(
         context.getSharedPreferences("travelguide_settings", Context.MODE_PRIVATE)
     )
@@ -31,10 +37,10 @@ class AppContainer(context: Context) {
     private val authApiBaseUrl = "$authHostUrl/api"
 
     private val cityBaseUrl = "http://10.0.2.2:8082/api/cities"
-
     private val poiBaseUrl = "http://10.0.2.2:8081/api/poi"
-
     private val reviewBaseUrl = "http://10.0.2.2:8083/api/reviews"
+
+    private val personalizationBaseUrl = "http://10.0.2.2:8085/api/personalization"
 
     val tokenStorage = TokenStorage(settings)
 
@@ -57,4 +63,14 @@ class AppContainer(context: Context) {
 
     private val reportApi = ReportApi(httpClient, reviewBaseUrl)
     val reportRepository = ReportRepository(reportApi)
+
+    private val favoriteApi = FavoriteApi(httpClient, personalizationBaseUrl)
+    val favoriteRepository = FavoriteRepository(favoriteApi, poiRepository)
+
+    private val collectionApi = CollectionApi(httpClient, personalizationBaseUrl)
+    val collectionRepository = CollectionRepository(collectionApi, poiRepository)
+
+    private val searchHistoryApi = SearchHistoryApi(httpClient, personalizationBaseUrl)
+    val searchHistoryRepository = SearchHistoryRepository(searchHistoryApi)
+
 }

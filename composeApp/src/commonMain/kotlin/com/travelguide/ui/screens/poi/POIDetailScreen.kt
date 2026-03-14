@@ -19,8 +19,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Comment
+import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -42,10 +43,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -58,17 +55,17 @@ import com.travelguide.ui.components.RatingBar
 fun POIDetailScreen(
     poi: POI?,
     isLoading: Boolean,
+    isFavorite: Boolean,
     errorMessage: String?,
     onRetry: () -> Unit,
     onBackClick: () -> Unit,
     onAddToRoute: () -> Unit,
-    onAddToFavorite: (Boolean) -> Unit,
+    onAddToCollection: () -> Unit,
+    onAddToFavorite: () -> Unit,
     onWriteReview: () -> Unit,
     onViewReviews: () -> Unit,
     onReportProblem: () -> Unit
 ) {
-    var isFavorite by remember { mutableStateOf(false) }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -80,12 +77,7 @@ fun POIDetailScreen(
                 },
                 actions = {
                     if (poi != null) {
-                        IconButton(
-                            onClick = {
-                                isFavorite = !isFavorite
-                                onAddToFavorite(isFavorite)
-                            }
-                        ) {
+                        IconButton(onClick = onAddToFavorite) {
                             Icon(
                                 imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                                 contentDescription = if (isFavorite) {
@@ -109,11 +101,12 @@ fun POIDetailScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                            .padding(horizontal = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Button(
                             onClick = onAddToRoute,
+                            modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary
                             )
@@ -124,21 +117,29 @@ fun POIDetailScreen(
                         }
 
                         Button(
-                            onClick = onViewReviews,
+                            onClick = onAddToCollection,
+                            modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.secondary
                             )
                         ) {
-                            Icon(Icons.Default.Comment, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Default.BookmarkAdd, contentDescription = null, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Отзывы")
+                            Text("В коллекцию")
                         }
 
                         Button(
-                            onClick = onWriteReview,
+                            onClick = onViewReviews,
+                            modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.tertiary
                             )
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = null, modifier = Modifier.size(20.dp))
+                        }
+
+                        Button(
+                            onClick = onWriteReview
                         ) {
                             Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(20.dp))
                         }

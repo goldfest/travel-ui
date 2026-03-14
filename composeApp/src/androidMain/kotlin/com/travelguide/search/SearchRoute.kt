@@ -12,14 +12,15 @@ import com.travelguide.ui.screens.search.SearchScreen
 fun SearchRoute(
     container: AppContainer,
     onBackClick: () -> Unit,
-    onPOIClick: (Int) -> Unit,
-    onCityClick: (Int) -> Unit
+    onPOIClick: (Int) -> Unit
 ) {
     val vm: SearchViewModel = viewModel(
         factory = SimpleViewModelFactory {
             SearchViewModel(
                 cityRepository = container.cityRepository,
-                poiRepository = container.poiRepository
+                poiRepository = container.poiRepository,
+                searchHistoryRepository = container.searchHistoryRepository,
+                favoriteRepository = container.favoriteRepository
             )
         }
     )
@@ -31,6 +32,8 @@ fun SearchRoute(
         cities = state.cities,
         pois = state.pois,
         selectedCity = state.selectedCity,
+        recentSearches = state.recentQueries,
+        favoritePoiIds = state.favoritePoiIds,
         isLoading = state.isLoading,
         errorMessage = state.errorMessage,
         onQueryChange = {
@@ -38,9 +41,11 @@ fun SearchRoute(
             vm.search(it)
         },
         onClearQuery = { vm.clearSearch() },
+        onSelectRecentQuery = { vm.useRecentQuery(it) },
+        onClearHistory = { vm.clearHistory() },
         onSelectCity = { vm.selectCity(it) },
+        onToggleFavorite = { poiId -> vm.toggleFavorite(poiId) },
         onBackClick = onBackClick,
-        onPOIClick = onPOIClick,
-        onCityClick = onCityClick
+        onPOIClick = onPOIClick
     )
 }

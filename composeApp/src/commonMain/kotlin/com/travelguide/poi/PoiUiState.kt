@@ -13,5 +13,6 @@ data class PoiListUiState(
 data class PoiDetailsUiState(
     val isLoading: Boolean = false,
     val poi: POI? = null,
+    val isFavorite: Boolean = false,
     val errorMessage: String? = null
 )

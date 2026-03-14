@@ -23,8 +23,12 @@ fun CityInfoRoute(
     )
 
     val poiVm: PoiViewModel = viewModel(
-        key = "city-pois-$cityId",
-        factory = SimpleViewModelFactory { PoiViewModel(container.poiRepository) }
+        factory = SimpleViewModelFactory {
+            PoiViewModel(
+                repository = container.poiRepository,
+                favoriteRepository = container.favoriteRepository
+            )
+        }
     )
 
     val cityState by cityVm.detailsState.collectAsState()

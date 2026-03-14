@@ -21,12 +21,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +34,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -43,23 +44,25 @@ import com.travelguide.domain.models.City
 import com.travelguide.domain.models.POI
 import com.travelguide.ui.components.cards.POICard
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
     query: String,
     cities: List<City>,
     pois: List<POI>,
     selectedCity: City?,
+    recentSearches: List<String>,
+    favoritePoiIds: Set<Int>,
     isLoading: Boolean,
     errorMessage: String?,
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
+    onSelectRecentQuery: (String) -> Unit,
+    onClearHistory: () -> Unit,
     onSelectCity: (City) -> Unit,
+    onToggleFavorite: (Int) -> Unit,
     onBackClick: () -> Unit,
-    onPOIClick: (Int) -> Unit,
-    onCityClick: (Int) -> Unit
+    onPOIClick: (Int) -> Unit
 ) {
-    val recentSearches = listOf("Москва", "Музеи", "Рестораны")
     val popularCategories = listOf("Рестораны", "Отели", "Музеи", "Парки", "Туалеты")
 
     Scaffold(
@@ -101,33 +104,60 @@ fun SearchScreen(
 
             when {
                 query.isEmpty() -> {
-                    Text(
-                        text = "Недавние поиски",
-                        style = MaterialTheme.typography.titleMedium
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Недавние поиски",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+
+                        if (recentSearches.isNotEmpty()) {
+                            TextButton(onClick = onClearHistory) {
+                                Icon(
+                                    Icons.Default.DeleteSweep,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.padding(2.dp))
+                                Text("Очистить")
+                            }
+                        }
+                    }
+
                     Spacer(modifier = Modifier.padding(4.dp))
 
-                    Column {
-                        recentSearches.forEach { recent ->
-                            Card(
-                                onClick = { onQueryChange(recent) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                            ) {
-                                Row(
+                    if (recentSearches.isEmpty()) {
+                        Text(
+                            text = "История поиска пока пуста",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        Column {
+                            recentSearches.forEach { recent ->
+                                Card(
+                                    onClick = { onSelectRecentQuery(recent) },
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                                        .padding(vertical = 4.dp)
                                 ) {
-                                    Text(text = recent)
-                                    Icon(
-                                        Icons.Default.Search,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(20.dp)
-                                    )
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(text = recent)
+                                        Icon(
+                                            Icons.Default.Search,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -149,7 +179,7 @@ fun SearchScreen(
                             Surface(
                                 shape = RoundedCornerShape(16.dp),
                                 color = MaterialTheme.colorScheme.secondaryContainer,
-                                modifier = Modifier.clickable { onQueryChange(category) }
+                                modifier = Modifier.clickable { onSelectRecentQuery(category) }
                             ) {
                                 Text(
                                     text = category,
@@ -281,8 +311,8 @@ fun SearchScreen(
                                 POICard(
                                     poi = poi,
                                     onClick = { onPOIClick(poi.id) },
-                                    onFavoriteClick = { },
-                                    isFavorite = false
+                                    onFavoriteClick = { _ -> onToggleFavorite(poi.id) },
+                                    isFavorite = poi.id in favoritePoiIds
                                 )
                             }
                         }

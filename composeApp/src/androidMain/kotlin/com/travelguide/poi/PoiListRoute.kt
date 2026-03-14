@@ -19,7 +19,12 @@ fun POIListRoute(
 ) {
     val vm: PoiViewModel = viewModel(
         key = "poi-list-$cityId",
-        factory = SimpleViewModelFactory { PoiViewModel(container.poiRepository) }
+        factory = SimpleViewModelFactory {
+            PoiViewModel(
+                repository = container.poiRepository,
+                favoriteRepository = container.favoriteRepository
+            )
+        }
     )
 
     val state by vm.listState.collectAsState()

@@ -2,6 +2,7 @@ package com.travelguide.poi
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.travelguide.favorite.FavoriteRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -9,7 +10,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class PoiViewModel(
-    private val repository: PoiRepository
+    private val repository: PoiRepository,
+    private val favoriteRepository: FavoriteRepository
 ) : ViewModel() {
 
     private val _listState = MutableStateFlow(PoiListUiState())
@@ -88,17 +90,48 @@ class PoiViewModel(
             _detailsState.value = PoiDetailsUiState(isLoading = true)
 
             runCatching {
-                val poi = repository.getPoiById(id)
+                val poiDeferred = async { repository.getPoiById(id) }
+                val favoriteDeferred = async { favoriteRepository.isFavorite(id) }
+
+                val poi = poiDeferred.await()
+                val isFavorite = favoriteDeferred.await()
+
                 _detailsState.value = PoiDetailsUiState(
                     isLoading = false,
                     poi = poi,
+                    isFavorite = isFavorite,
                     errorMessage = null
                 )
             }.onFailure { e ->
                 _detailsState.value = PoiDetailsUiState(
                     isLoading = false,
                     poi = null,
+                    isFavorite = false,
                     errorMessage = e.message ?: "Не удалось загрузить объект"
+                )
+            }
+        }
+    }
+
+    fun toggleFavorite() {
+        val poi = _detailsState.value.poi ?: return
+
+        viewModelScope.launch {
+            val current = _detailsState.value.isFavorite
+
+            runCatching {
+                if (current) {
+                    favoriteRepository.removeFromFavorites(poi.id)
+                } else {
+                    favoriteRepository.addToFavorites(poi.id)
+                }
+            }.onSuccess {
+                _detailsState.value = _detailsState.value.copy(
+                    isFavorite = !current
+                )
+            }.onFailure { e ->
+                _detailsState.value = _detailsState.value.copy(
+                    errorMessage = e.message ?: "Не удалось обновить избранное"
                 )
             }
         }

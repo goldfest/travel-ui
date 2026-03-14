@@ -9,5 +9,7 @@ data class SearchUiState(
     val cities: List<City> = emptyList(),
     val pois: List<POI> = emptyList(),
     val selectedCity: City? = null,
+    val recentQueries: List<String> = emptyList(),
+    val favoritePoiIds: Set<Int> = emptySet(),
     val errorMessage: String? = null
 )
