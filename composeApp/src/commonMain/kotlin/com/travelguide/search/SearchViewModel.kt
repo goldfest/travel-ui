@@ -4,8 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.travelguide.city.CityRepository
 import com.travelguide.domain.models.City
+import com.travelguide.domain.models.POI
+import com.travelguide.domain.models.PoiCardUiModel
 import com.travelguide.favorite.FavoriteRepository
 import com.travelguide.poi.PoiRepository
+import com.travelguide.review.ReviewRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -20,7 +23,8 @@ class SearchViewModel(
     private val cityRepository: CityRepository,
     private val poiRepository: PoiRepository,
     private val searchHistoryRepository: SearchHistoryRepository,
-    private val favoriteRepository: FavoriteRepository
+    private val favoriteRepository: FavoriteRepository,
+    private val reviewRepository: ReviewRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SearchUiState())
@@ -50,9 +54,8 @@ class SearchViewModel(
         _state.value = _state.value.copy(
             query = "",
             cities = emptyList(),
-            pois = emptyList(),
+            items = emptyList(),
             selectedCity = null,
-            favoritePoiIds = emptySet(),
             isLoading = false,
             errorMessage = null
         )
@@ -90,9 +93,8 @@ class SearchViewModel(
             _state.value = _state.value.copy(
                 isLoading = false,
                 cities = emptyList(),
-                pois = emptyList(),
+                items = emptyList(),
                 selectedCity = null,
-                favoritePoiIds = emptySet(),
                 errorMessage = null
             )
             loadRecentQueries()
@@ -114,7 +116,7 @@ class SearchViewModel(
                 _state.value = _state.value.copy(
                     isLoading = false,
                     cities = cities,
-                    pois = if (_state.value.selectedCity == null) emptyList() else _state.value.pois,
+                    items = if (_state.value.selectedCity == null) emptyList() else _state.value.items,
                     errorMessage = null
                 )
 
@@ -136,8 +138,7 @@ class SearchViewModel(
     fun searchPoisInSelectedCity(query: String, city: City? = _state.value.selectedCity) {
         if (city == null || query.isBlank()) {
             _state.value = _state.value.copy(
-                pois = emptyList(),
-                favoritePoiIds = emptySet()
+                items = emptyList()
             )
             return
         }
@@ -154,14 +155,11 @@ class SearchViewModel(
                     query = query
                 )
 
-                val favoriteIds = loadFavoriteIds(pois.map { it.id })
-
-                pois to favoriteIds
-            }.onSuccess { (pois, favoriteIds) ->
+                buildPoiCardItems(pois)
+            }.onSuccess { items ->
                 _state.value = _state.value.copy(
                     isLoading = false,
-                    pois = pois,
-                    favoritePoiIds = favoriteIds,
+                    items = items,
                     errorMessage = null
                 )
             }.onFailure { e ->
@@ -175,36 +173,50 @@ class SearchViewModel(
 
     fun toggleFavorite(poiId: Int) {
         viewModelScope.launch {
-            val current = poiId in _state.value.favoritePoiIds
+            val currentItems = _state.value.items
+            val target = currentItems.firstOrNull { it.poi.id == poiId } ?: return@launch
 
             runCatching {
-                if (current) {
+                if (target.isFavorite) {
                     favoriteRepository.removeFromFavorites(poiId)
                 } else {
                     favoriteRepository.addToFavorites(poiId)
                 }
             }.onSuccess {
                 _state.value = _state.value.copy(
-                    favoritePoiIds = if (current) {
-                        _state.value.favoritePoiIds - poiId
-                    } else {
-                        _state.value.favoritePoiIds + poiId
+                    items = currentItems.map { item ->
+                        if (item.poi.id == poiId) {
+                            item.copy(isFavorite = !item.isFavorite)
+                        } else {
+                            item
+                        }
                     }
                 )
             }
         }
     }
 
-    private suspend fun loadFavoriteIds(poiIds: List<Int>): Set<Int> = coroutineScope {
-        poiIds.map { poiId ->
-            async {
-                poiId to runCatching { favoriteRepository.isFavorite(poiId) }.getOrDefault(false)
-            }
-        }.awaitAll()
-            .filter { it.second }
-            .map { it.first }
-            .toSet()
-    }
+    private suspend fun buildPoiCardItems(pois: List<POI>): List<PoiCardUiModel> =
+        coroutineScope {
+            pois.map { poi ->
+                async {
+                    val isFavorite = runCatching {
+                        favoriteRepository.isFavorite(poi.id)
+                    }.getOrDefault(false)
+
+                    val stats = runCatching {
+                        reviewRepository.getPoiStats(poi.id)
+                    }.getOrNull()
+
+                    PoiCardUiModel(
+                        poi = poi,
+                        isFavorite = isFavorite,
+                        averageRating = stats?.averageRating,
+                        reviewCount = stats?.totalReviews?: 0
+                    )
+                }
+            }.awaitAll()
+        }
 
     private fun recordSearch(query: String, cityId: Int?) {
         viewModelScope.launch {

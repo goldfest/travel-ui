@@ -20,7 +20,8 @@ fun SearchRoute(
                 cityRepository = container.cityRepository,
                 poiRepository = container.poiRepository,
                 searchHistoryRepository = container.searchHistoryRepository,
-                favoriteRepository = container.favoriteRepository
+                favoriteRepository = container.favoriteRepository,
+                reviewRepository = container.reviewRepository
             )
         }
     )
@@ -30,10 +31,9 @@ fun SearchRoute(
     SearchScreen(
         query = state.query,
         cities = state.cities,
-        pois = state.pois,
+        items = state.items,
         selectedCity = state.selectedCity,
         recentSearches = state.recentQueries,
-        favoritePoiIds = state.favoritePoiIds,
         isLoading = state.isLoading,
         errorMessage = state.errorMessage,
         onQueryChange = {

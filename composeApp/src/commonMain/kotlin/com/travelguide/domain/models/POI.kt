@@ -8,8 +8,6 @@ data class POI(
     val latitude: Double? = null,
     val longitude: Double? = null,
     val priceLevel: Int? = null,
-    val averageRating: Float? = null,
-    val ratingCount: Int = 0,
     val cityId: Int,
     val poiTypeId: Int,
     val poiType: POIType? = null,
@@ -18,8 +16,6 @@ data class POI(
     val images: List<String> = emptyList(),
     val features: List<Feature> = emptyList()
 ) {
-    fun hasRating(): Boolean = averageRating != null && averageRating > 0
-    fun ratingFormatted(): String = "${averageRating ?: 0f}"
     fun priceLevelText(): String = when (priceLevel) {
         0 -> "Бесплатно"
         1 -> "Низкие цены"

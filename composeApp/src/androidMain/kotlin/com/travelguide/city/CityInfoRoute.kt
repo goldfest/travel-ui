@@ -23,10 +23,12 @@ fun CityInfoRoute(
     )
 
     val poiVm: PoiViewModel = viewModel(
+        key = "city-poi-$cityId",
         factory = SimpleViewModelFactory {
             PoiViewModel(
                 repository = container.poiRepository,
-                favoriteRepository = container.favoriteRepository
+                favoriteRepository = container.favoriteRepository,
+                reviewRepository = container.reviewRepository
             )
         }
     )
@@ -44,12 +46,15 @@ fun CityInfoRoute(
         isLoading = cityState.isLoading,
         errorMessage = cityState.errorMessage,
         onRetry = { cityVm.loadCity(cityId) },
-        pois = poiState.pois,
+        items = poiState.items,
         poiTypes = poiState.poiTypes,
         isPoisLoading = poiState.isLoading,
         poisErrorMessage = poiState.errorMessage,
         onRetryPois = { poiVm.loadPoisByCity(cityId) },
         onPOIClick = onPOIClick,
+        onToggleFavorite = { poiId ->
+            poiVm.toggleFavoriteForCard(poiId)
+        },
         onBackClick = onBackClick
     )
 }

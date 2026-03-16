@@ -41,17 +41,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.travelguide.domain.models.City
-import com.travelguide.domain.models.POI
+import com.travelguide.domain.models.PoiCardUiModel
 import com.travelguide.ui.components.cards.POICard
 
 @Composable
 fun SearchScreen(
     query: String,
     cities: List<City>,
-    pois: List<POI>,
+    items: List<PoiCardUiModel>,
     selectedCity: City?,
     recentSearches: List<String>,
-    favoritePoiIds: Set<Int>,
     isLoading: Boolean,
     errorMessage: String?,
     onQueryChange: (String) -> Unit,
@@ -283,7 +282,7 @@ fun SearchScreen(
                         item {
                             Text(
                                 text = if (selectedCity != null) {
-                                    "Объекты в ${selectedCity.name} (${pois.size})"
+                                    "Объекты в ${selectedCity.name} (${items.size})"
                                 } else {
                                     "Объекты"
                                 },
@@ -299,7 +298,7 @@ fun SearchScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                        } else if (pois.isEmpty()) {
+                        } else if (items.isEmpty()) {
                             item {
                                 Text(
                                     text = "Объекты не найдены",
@@ -307,12 +306,11 @@ fun SearchScreen(
                                 )
                             }
                         } else {
-                            items(pois) { poi ->
+                            items(items) { item ->
                                 POICard(
-                                    poi = poi,
-                                    onClick = { onPOIClick(poi.id) },
-                                    onFavoriteClick = { _ -> onToggleFavorite(poi.id) },
-                                    isFavorite = poi.id in favoritePoiIds
+                                    item = item,
+                                    onClick = { onPOIClick(item.poi.id) },
+                                    onFavoriteClick = { onToggleFavorite(item.poi.id) }
                                 )
                             }
                         }

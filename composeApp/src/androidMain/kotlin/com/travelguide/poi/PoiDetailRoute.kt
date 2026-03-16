@@ -37,7 +37,8 @@ fun PoiDetailRoute(
         factory = SimpleViewModelFactory {
             PoiViewModel(
                 repository = container.poiRepository,
-                favoriteRepository = container.favoriteRepository
+                favoriteRepository = container.favoriteRepository,
+                reviewRepository = container.reviewRepository
             )
         }
     )
@@ -63,29 +64,31 @@ fun PoiDetailRoute(
         poiVm.loadPoi(poiId)
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-    ) { _ ->
-        POIDetailScreen(
-            poi = poiState.poi,
-            isLoading = poiState.isLoading,
-            isFavorite = poiState.isFavorite,
-            errorMessage = poiState.errorMessage,
-            onRetry = { poiVm.loadPoi(poiId) },
-            onBackClick = onBackClick,
-            onAddToRoute = onAddToRoute,
-            onAddToCollection = {
-                showActionDialog = true
-            },
-            onAddToFavorite = {
-                poiVm.toggleFavorite()
-                onAddToFavorite(!poiState.isFavorite)
-            },
-            onWriteReview = onWriteReview,
-            onViewReviews = onViewReviews,
-            onReportProblem = onReportProblem
-        )
-    }
+
+    POIDetailScreen(
+        poi = poiState.poi,
+        isLoading = poiState.isLoading,
+        isFavorite = poiState.isFavorite,
+        averageRating = poiState.averageRating,
+        reviewCount = poiState.reviewCount,
+        errorMessage = poiState.errorMessage,
+        onRetry = { poiVm.loadPoi(poiId) },
+        onBackClick = onBackClick,
+        onAddToRoute = onAddToRoute,
+        onAddToCollection = {
+            showActionDialog = true
+        },
+        onAddToFavorite = {
+            poiVm.toggleFavorite()
+        },
+        onWriteReview = onWriteReview,
+        onViewReviews = onViewReviews,
+        onReportProblem = onReportProblem,
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState)
+        }
+    )
+
 
     if (showActionDialog) {
         CollectionActionDialog(
@@ -93,13 +96,7 @@ fun PoiDetailRoute(
             onAddToExisting = {
                 showActionDialog = false
                 collectionVm.loadCollections()
-                if (collectionState.collections.isEmpty()) {
-                    scope.launch {
-                        snackbarHostState.showSnackbar("У вас пока нет коллекций")
-                    }
-                } else {
-                    showCollectionDialog = true
-                }
+                showCollectionDialog = true
             },
             onCreateNew = {
                 showActionDialog = false

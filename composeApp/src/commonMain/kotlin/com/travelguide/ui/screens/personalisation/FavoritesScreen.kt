@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.travelguide.domain.models.Favorite
+import com.travelguide.domain.models.PoiCardUiModel
 import com.travelguide.ui.components.cards.POICard
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -225,10 +226,12 @@ fun FavoritesScreen(
                             items(filteredFavorites) { favorite ->
                                 favorite.poi?.let { poi ->
                                     POICard(
-                                        poi = poi,
+                                        item = PoiCardUiModel(
+                                            poi = poi,
+                                            isFavorite = true
+                                        ),
                                         onClick = { onPOIClick(poi.id) },
-                                        onFavoriteClick = { _ -> onRemoveFavorite(poi.id) },
-                                        isFavorite = true
+                                        onFavoriteClick = { onRemoveFavorite(poi.id) }
                                     )
                                 }
                             }

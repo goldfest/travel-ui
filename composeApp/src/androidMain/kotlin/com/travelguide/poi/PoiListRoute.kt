@@ -22,7 +22,8 @@ fun POIListRoute(
         factory = SimpleViewModelFactory {
             PoiViewModel(
                 repository = container.poiRepository,
-                favoriteRepository = container.favoriteRepository
+                favoriteRepository = container.favoriteRepository,
+                reviewRepository = container.reviewRepository
             )
         }
     )
@@ -35,7 +36,7 @@ fun POIListRoute(
 
     POIListScreen(
         cityId = cityId,
-        pois = state.pois,
+        items = state.items,
         poiTypes = state.poiTypes,
         isLoading = state.isLoading,
         errorMessage = state.errorMessage,
@@ -56,6 +57,9 @@ fun POIListRoute(
             }
         },
         onPOIClick = onPOIClick,
+        onFavoriteClick = { poiId ->
+            vm.toggleFavoriteForCard(poiId)
+        },
         onBackClick = onBackClick,
         onFilterClick = onFilterClick
     )

@@ -6,11 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -19,7 +17,9 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -27,8 +27,6 @@ import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -40,27 +38,26 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.travelguide.domain.models.POI
 import com.travelguide.domain.models.POIType
+import com.travelguide.domain.models.PoiCardUiModel
 import com.travelguide.ui.components.cards.POICard
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun POIListScreen(
     cityId: Int,
-    pois: List<POI>,
+    items: List<PoiCardUiModel>,
     poiTypes: List<POIType>,
     isLoading: Boolean,
     errorMessage: String?,
     onRetry: () -> Unit,
     onSearch: (String, String?) -> Unit,
     onPOIClick: (Int) -> Unit,
+    onFavoriteClick: (Int) -> Unit,
     onBackClick: () -> Unit,
     onFilterClick: () -> Unit
 ) {
     var selectedType by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
-    var isFavoriteFilter by remember { mutableStateOf(false) }
 
     LaunchedEffect(searchQuery, selectedType) {
         onSearch(searchQuery, selectedType)
@@ -69,9 +66,7 @@ fun POIListScreen(
     val selectedTabIndex = buildList {
         add("all")
         addAll(poiTypes.map { it.code })
-    }.indexOf(
-        selectedType ?: "all"
-    ).let { if (it < 0) 0 else it }
+    }.indexOf(selectedType ?: "all").let { if (it < 0) 0 else it }
 
     Scaffold(
         topBar = {
@@ -135,7 +130,7 @@ fun POIListScreen(
                 }
 
                 when {
-                    isLoading && pois.isEmpty() -> {
+                    isLoading && items.isEmpty() -> {
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
@@ -171,7 +166,7 @@ fun POIListScreen(
                         }
                     }
 
-                    pois.isEmpty() -> {
+                    items.isEmpty() -> {
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
@@ -186,12 +181,11 @@ fun POIListScreen(
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(pois) { poi ->
+                            items(items) { item ->
                                 POICard(
-                                    poi = poi,
-                                    onClick = { onPOIClick(poi.id) },
-                                    onFavoriteClick = { },
-                                    isFavorite = isFavoriteFilter
+                                    item = item,
+                                    onClick = { onPOIClick(item.poi.id) },
+                                    onFavoriteClick = { onFavoriteClick(item.poi.id) }
                                 )
                             }
                         }

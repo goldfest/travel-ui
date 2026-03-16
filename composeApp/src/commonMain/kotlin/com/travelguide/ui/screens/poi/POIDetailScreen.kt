@@ -56,6 +56,8 @@ fun POIDetailScreen(
     poi: POI?,
     isLoading: Boolean,
     isFavorite: Boolean,
+    averageRating: Double?,
+    reviewCount: Int,
     errorMessage: String?,
     onRetry: () -> Unit,
     onBackClick: () -> Unit,
@@ -64,9 +66,13 @@ fun POIDetailScreen(
     onAddToFavorite: () -> Unit,
     onWriteReview: () -> Unit,
     onViewReviews: () -> Unit,
-    onReportProblem: () -> Unit
+    onReportProblem: () -> Unit,
+    snackbarHost: @Composable (() -> Unit)? = null
 ) {
     Scaffold(
+        snackbarHost = {
+            snackbarHost?.invoke()
+        },
         topBar = {
             TopAppBar(
                 title = { Text(poi?.name ?: "Объект") },
@@ -245,11 +251,11 @@ fun POIDetailScreen(
                             Spacer(modifier = Modifier.height(8.dp))
 
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (poi.hasRating()) {
-                                    RatingBar(rating = poi.averageRating!!)
+                                if (averageRating != null && reviewCount > 0) {
+                                    RatingBar(rating = averageRating.toFloat())
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = "${poi.averageRating} (${poi.ratingCount} отзывов)",
+                                        text = "${String.format("%.1f", averageRating)} ($reviewCount отзывов)",
                                         style = MaterialTheme.typography.bodyLarge
                                     )
                                 } else {

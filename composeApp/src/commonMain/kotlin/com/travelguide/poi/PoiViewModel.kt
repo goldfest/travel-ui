@@ -2,8 +2,12 @@ package com.travelguide.poi
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.travelguide.domain.models.PoiCardUiModel
 import com.travelguide.favorite.FavoriteRepository
+import com.travelguide.review.ReviewRepository
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,7 +15,8 @@ import kotlinx.coroutines.launch
 
 class PoiViewModel(
     private val repository: PoiRepository,
-    private val favoriteRepository: FavoriteRepository
+    private val favoriteRepository: FavoriteRepository,
+    private val reviewRepository: ReviewRepository
 ) : ViewModel() {
 
     private val _listState = MutableStateFlow(PoiListUiState())
@@ -33,10 +38,11 @@ class PoiViewModel(
 
                 val pois = poisDeferred.await()
                 val types = typesDeferred.await()
+                val items = buildPoiCardItems(pois)
 
                 _listState.value = PoiListUiState(
                     isLoading = false,
-                    pois = pois,
+                    items = items,
                     poiTypes = types,
                     errorMessage = null
                 )
@@ -71,9 +77,11 @@ class PoiViewModel(
                     )
                 }
 
+                val items = buildPoiCardItems(pois)
+
                 _listState.value = _listState.value.copy(
                     isLoading = false,
-                    pois = pois,
+                    items = items,
                     errorMessage = null
                 )
             }.onFailure { e ->
@@ -92,14 +100,18 @@ class PoiViewModel(
             runCatching {
                 val poiDeferred = async { repository.getPoiById(id) }
                 val favoriteDeferred = async { favoriteRepository.isFavorite(id) }
+                val statsDeferred = async { reviewRepository.getPoiStats(id) }
 
                 val poi = poiDeferred.await()
                 val isFavorite = favoriteDeferred.await()
+                val stats = statsDeferred.await()
 
                 _detailsState.value = PoiDetailsUiState(
                     isLoading = false,
                     poi = poi,
                     isFavorite = isFavorite,
+                    averageRating = stats.averageRating,
+                    reviewCount = stats.totalReviews.toInt(),
                     errorMessage = null
                 )
             }.onFailure { e ->
@@ -107,6 +119,8 @@ class PoiViewModel(
                     isLoading = false,
                     poi = null,
                     isFavorite = false,
+                    averageRating = null,
+                    reviewCount = 0,
                     errorMessage = e.message ?: "Не удалось загрузить объект"
                 )
             }
@@ -118,6 +132,7 @@ class PoiViewModel(
 
         viewModelScope.launch {
             val current = _detailsState.value.isFavorite
+            val newValue = !current
 
             runCatching {
                 if (current) {
@@ -126,14 +141,72 @@ class PoiViewModel(
                     favoriteRepository.addToFavorites(poi.id)
                 }
             }.onSuccess {
-                _detailsState.value = _detailsState.value.copy(
-                    isFavorite = !current
-                )
+                updateFavoriteInDetails(poi.id, newValue)
+                updateFavoriteInList(poi.id, newValue)
             }.onFailure { e ->
                 _detailsState.value = _detailsState.value.copy(
                     errorMessage = e.message ?: "Не удалось обновить избранное"
                 )
             }
+        }
+    }
+
+    fun toggleFavoriteForCard(poiId: Int) {
+        viewModelScope.launch {
+            val currentItems = _listState.value.items
+            val target = currentItems.firstOrNull { it.poi.id == poiId } ?: return@launch
+            val newValue = !target.isFavorite
+
+            runCatching {
+                if (target.isFavorite) {
+                    favoriteRepository.removeFromFavorites(poiId)
+                } else {
+                    favoriteRepository.addToFavorites(poiId)
+                }
+            }.onSuccess {
+                updateFavoriteInList(poiId, newValue)
+                updateFavoriteInDetails(poiId, newValue)
+            }.onFailure { e ->
+                _listState.value = _listState.value.copy(
+                    errorMessage = e.message ?: "Не удалось обновить избранное"
+                )
+            }
+        }
+    }
+
+    private suspend fun buildPoiCardItems(pois: List<com.travelguide.domain.models.POI>): List<PoiCardUiModel> =
+        coroutineScope {
+            pois.map { poi ->
+                async {
+                    val isFavorite = runCatching {
+                        favoriteRepository.isFavorite(poi.id)
+                    }.getOrDefault(false)
+
+                    val stats = runCatching {
+                        reviewRepository.getPoiStats(poi.id)
+                    }.getOrNull()
+
+                    PoiCardUiModel(
+                        poi = poi,
+                        isFavorite = isFavorite,
+                        averageRating = stats?.averageRating,
+                        reviewCount = stats?.totalReviews ?: 0
+                    )
+                }
+            }.awaitAll()
+        }
+    private fun updateFavoriteInList(poiId: Int, isFavorite: Boolean) {
+        _listState.value = _listState.value.copy(
+            items = _listState.value.items.map { item ->
+                if (item.poi.id == poiId) item.copy(isFavorite = isFavorite) else item
+            }
+        )
+    }
+
+    private fun updateFavoriteInDetails(poiId: Int, isFavorite: Boolean) {
+        val currentPoi = _detailsState.value.poi
+        if (currentPoi?.id == poiId) {
+            _detailsState.value = _detailsState.value.copy(isFavorite = isFavorite)
         }
     }
 }

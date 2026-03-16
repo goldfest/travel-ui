@@ -56,8 +56,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.travelguide.domain.models.City
-import com.travelguide.domain.models.POI
 import com.travelguide.domain.models.POIType
+import com.travelguide.domain.models.PoiCardUiModel
 import com.travelguide.ui.components.cards.POICard
 
 @Composable
@@ -66,19 +66,20 @@ fun CityInfoScreen(
     isLoading: Boolean,
     errorMessage: String?,
     onRetry: () -> Unit,
-    pois: List<POI>,
+    items: List<PoiCardUiModel>,
     poiTypes: List<POIType>,
     isPoisLoading: Boolean,
     poisErrorMessage: String?,
     onRetryPois: () -> Unit,
     onPOIClick: (Int) -> Unit,
+    onToggleFavorite: (Int) -> Unit,
     onBackClick: () -> Unit
 ) {
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
-    var isFavoriteFilter by remember { mutableStateOf(false) }
 
-    val filteredPOIs = pois.filter { poi ->
+    val filteredItems = items.filter { item ->
+        val poi = item.poi
         (selectedCategory == null || poi.poiType?.code == selectedCategory) &&
                 (searchQuery.isEmpty() ||
                         poi.name.contains(searchQuery, ignoreCase = true) ||
@@ -254,7 +255,7 @@ fun CityInfoScreen(
                                     horizontalArrangement = Arrangement.SpaceAround
                                 ) {
                                     StatItem(
-                                        value = pois.size.toString(),
+                                        value = items.size.toString(),
                                         label = "Объектов"
                                     )
                                     StatItem(
@@ -339,7 +340,7 @@ fun CityInfoScreen(
                             )
 
                             Text(
-                                text = "${filteredPOIs.size} шт",
+                                text = "${filteredItems.size} шт",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -347,7 +348,7 @@ fun CityInfoScreen(
                     }
 
                     when {
-                        isPoisLoading && pois.isEmpty() -> {
+                        isPoisLoading && items.isEmpty() -> {
                             item {
                                 Box(
                                     modifier = Modifier
@@ -386,7 +387,7 @@ fun CityInfoScreen(
                             }
                         }
 
-                        filteredPOIs.isEmpty() -> {
+                        filteredItems.isEmpty() -> {
                             item {
                                 Box(
                                     modifier = Modifier
@@ -420,12 +421,11 @@ fun CityInfoScreen(
                         }
 
                         else -> {
-                            items(filteredPOIs) { poi ->
+                            items(filteredItems) { item ->
                                 POICard(
-                                    poi = poi,
-                                    onClick = { onPOIClick(poi.id) },
-                                    onFavoriteClick = { },
-                                    isFavorite = isFavoriteFilter,
+                                    item = item,
+                                    onClick = { onPOIClick(item.poi.id) },
+                                    onFavoriteClick = { onToggleFavorite(item.poi.id) },
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                                 )
                             }

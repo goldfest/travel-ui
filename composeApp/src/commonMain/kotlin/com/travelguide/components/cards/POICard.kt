@@ -1,46 +1,59 @@
 package com.travelguide.ui.components.cards
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.travelguide.domain.models.POI
 import com.travelguide.ui.components.RatingBar
+import com.travelguide.domain.models.PoiCardUiModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun POICard(
-    poi: POI,
+    item: PoiCardUiModel,
     onClick: () -> Unit,
-    onFavoriteClick: (Boolean) -> Unit,
-    isFavorite: Boolean = false,
+    onFavoriteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val poi = item.poi
+
     Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // Верхняя часть с изображением
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -48,10 +61,10 @@ fun POICard(
                     .clip(RoundedCornerShape(8.dp))
                     .background(Color.LightGray)
             ) {
-                // Здесь будет изображение (пока заглушка)
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
+                        .height(150.dp)
                         .background(MaterialTheme.colorScheme.primaryContainer),
                     contentAlignment = Alignment.Center
                 ) {
@@ -61,9 +74,8 @@ fun POICard(
                     )
                 }
 
-                // Кнопка избранного
                 IconButton(
-                    onClick = { onFavoriteClick(!isFavorite) },
+                    onClick = onFavoriteClick,
                     modifier = Modifier
                         .padding(8.dp)
                         .align(Alignment.TopEnd)
@@ -74,13 +86,20 @@ fun POICard(
                         .size(36.dp)
                 ) {
                     Icon(
-                        imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = if (isFavorite) "Удалить из избранного" else "Добавить в избранное",
-                        tint = if (isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                        imageVector = if (item.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = if (item.isFavorite) {
+                            "Удалить из избранного"
+                        } else {
+                            "Добавить в избранное"
+                        },
+                        tint = if (item.isFavorite) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        }
                     )
                 }
 
-                // Бейдж типа
                 Box(
                     modifier = Modifier
                         .padding(8.dp)
@@ -101,7 +120,6 @@ fun POICard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Информация о POI
             Text(
                 text = poi.name,
                 style = MaterialTheme.typography.titleMedium,
@@ -111,21 +129,17 @@ fun POICard(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Рейтинг и отзывы
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                if (poi.hasRating()) {
-                    RatingBar(
-                        rating = poi.averageRating!!,
-
-                    )
+                if (item.averageRating != null && item.reviewCount > 0) {
+                    RatingBar(rating = item.averageRating.toFloat())
 
                     Spacer(modifier = Modifier.width(4.dp))
 
                     Text(
-                        text = poi.ratingFormatted(),
+                        text = String.format("%.1f", item.averageRating),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -133,7 +147,7 @@ fun POICard(
                     Spacer(modifier = Modifier.width(4.dp))
 
                     Text(
-                        text = "(${poi.ratingCount})",
+                        text = "(${item.reviewCount})",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -156,7 +170,6 @@ fun POICard(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Адрес
             if (!poi.address.isNullOrEmpty()) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -182,7 +195,6 @@ fun POICard(
                 }
             }
 
-            // Теги
             if (poi.tags.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 FlowRow(
