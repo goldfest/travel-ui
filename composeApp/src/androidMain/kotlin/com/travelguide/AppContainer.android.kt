@@ -16,12 +16,14 @@ import com.travelguide.network.personalization.SearchHistoryApi
 import com.travelguide.network.poi.PoiApi
 import com.travelguide.network.review.ReportApi
 import com.travelguide.network.review.ReviewApi
+import com.travelguide.network.route.RouteApi
 import com.travelguide.network.user.UserApi
 import com.travelguide.personalisation.CollectionRepository
 import com.travelguide.poi.PoiRepository
 import com.travelguide.profile.UserRepository
 import com.travelguide.review.ReportRepository
 import com.travelguide.review.ReviewRepository
+import com.travelguide.route.RouteRepository
 import com.travelguide.search.SearchHistoryRepository
 import com.travelguide.session.SessionManager
 
@@ -41,6 +43,8 @@ class AppContainer(context: Context) {
     private val reviewBaseUrl = "http://10.0.2.2:8083/api/reviews"
 
     private val personalizationBaseUrl = "http://10.0.2.2:8085/api/personalization"
+
+    private val routeBaseUrl = "http://10.0.2.2:8087/api/routes"
 
     val tokenStorage = TokenStorage(settings)
 
@@ -72,5 +76,10 @@ class AppContainer(context: Context) {
 
     private val searchHistoryApi = SearchHistoryApi(httpClient, personalizationBaseUrl)
     val searchHistoryRepository = SearchHistoryRepository(searchHistoryApi)
+
+
+
+    private val routeApi = RouteApi(httpClient, routeBaseUrl)
+    val routeRepository = RouteRepository(routeApi, poiRepository)
 
 }

@@ -31,13 +31,6 @@ data class Feature(
     val value: String
 )
 
-// Создай объект POITypes:
-object POITypes {
-    val ATTRACTION = POIType(1, "attraction", "Достопримечательность", "🏛️")
-    val RESTAURANT = POIType(2, "restaurant", "Ресторан", "🍽️")
-    val HOTEL = POIType(3, "hotel", "Отель", "🏨")
-    val TOILET = POIType(4, "toilet", "Туалет", "🚻")
-}
 
 data class POIType(
     val id: Int,

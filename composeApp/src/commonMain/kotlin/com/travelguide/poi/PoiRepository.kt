@@ -91,8 +91,6 @@ private fun PoiResponseDto.toDomain(): POI {
         latitude = latitude,
         longitude = longitude,
         priceLevel = priceLevel,
-        averageRating = averageRating?.toFloat(),
-        ratingCount = ratingCount ?: 0,
         cityId = cityId.toInt(),
         poiTypeId = poiType?.id?.toInt() ?: 0,
         poiType = mappedType,

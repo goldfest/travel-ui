@@ -1,41 +1,62 @@
-// screens/route/CreateRouteScreen.kt
 package com.travelguide.ui.screens.route
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import com.travelguide.data.mock.MockData
-import com.travelguide.ui.components.cards.POICard
-import androidx.compose.foundation.shape.CircleShape
-
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.text.font.FontWeight
+import com.travelguide.domain.models.POI
+import com.travelguide.domain.models.RoutePoint
+import com.travelguide.domain.models.TransportMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateRouteScreen(
+    routeName: String,
+    routeDescription: String,
+    selectedTransport: TransportMode,
+    searchQuery: String,
+    availablePois: List<POI>,
+    selectedPois: List<POI>,
+    isLoading: Boolean,
+    errorMessage: String?,
     onBackClick: () -> Unit,
-    onSubmit: (Int) -> Unit
+    onNameChange: (String) -> Unit,
+    onDescriptionChange: (String) -> Unit,
+    onTransportChange: (TransportMode) -> Unit,
+    onSearchChange: (String) -> Unit,
+    onTogglePoi: (POI) -> Unit,
+    onRemovePoi: (Int) -> Unit,
+    onSubmitClick: () -> Unit
 ) {
-    var routeName by remember { mutableStateOf("") }
-    var routeDescription by remember { mutableStateOf("") }
-    var selectedTransport by remember { mutableStateOf("WALK") }
-    var searchQuery by remember { mutableStateOf(TextFieldValue("")) }
-    var selectedPOIs by remember { mutableStateOf<List<Int>>(emptyList()) }
-
-    val transportModes = listOf(
-        "WALK" to "Пешком",
-        "PUBLIC_TRANSPORT" to "Общественный транспорт",
-        "CAR" to "На машине",
-        "MIXED" to "Смешанный"
-    )
+    val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
         topBar = {
@@ -47,160 +68,159 @@ fun CreateRouteScreen(
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = {
-                            // TODO: создать маршрут
-                            onSubmit(1) // временный ID
-                        },
-                        enabled = routeName.isNotEmpty() && selectedPOIs.isNotEmpty()
+                    TextButton(
+                        onClick = onSubmitClick,
+                        enabled = !isLoading && routeName.isNotBlank() && selectedPois.isNotEmpty()
                     ) {
                         Text("Создать")
                     }
                 }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        Column(
+        if (isLoading && availablePois.isEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                verticalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator(modifier = Modifier.padding(24.dp))
+            }
+            return@Scaffold
+        }
+
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(paddingValues),
+            contentPadding = PaddingValues(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Форма создания
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    // Название маршрута
-                    OutlinedTextField(
-                        value = routeName,
-                        onValueChange = { routeName = it },
-                        label = { Text("Название маршрута*") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        OutlinedTextField(
+                            value = routeName,
+                            onValueChange = onNameChange,
+                            label = { Text("Название маршрута*") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                    // Описание
-                    OutlinedTextField(
-                        value = routeDescription,
-                        onValueChange = { routeDescription = it },
-                        label = { Text("Описание") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(100.dp),
-                        maxLines = 4
-                    )
+                        OutlinedTextField(
+                            value = routeDescription,
+                            onValueChange = onDescriptionChange,
+                            label = { Text("Описание") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(100.dp),
+                            maxLines = 4
+                        )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                    // Режим передвижения
-                    Text(
-                        text = "Режим передвижения",
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        transportModes.forEach { (mode, label) ->
-                            FilterChip(
-                                selected = selectedTransport == mode,
-                                onClick = { selectedTransport = mode },
-                                label = { Text(label) }
-                            )
+                        Text(
+                            text = "Режим передвижения",
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            TransportMode.entries.forEach { mode ->
+                                FilterChip(
+                                    selected = selectedTransport == mode,
+                                    onClick = { onTransportChange(mode) },
+                                    label = { Text(mode.label()) }
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            // Выбранные точки
-            if (selectedPOIs.isNotEmpty()) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "Выбранные точки (${selectedPOIs.size})",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        LazyColumn(
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.height(200.dp)
-                        ) {
-                            items(selectedPOIs) { poiId ->
-                                val poi = MockData.pois.firstOrNull { it.id == poiId }
-                                poi?.let {
+            if (!errorMessage.isNullOrBlank()) {
+                item {
+                    Text(
+                        text = errorMessage,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
+            }
+
+            if (selectedPois.isNotEmpty()) {
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "Выбранные точки (${selectedPois.size})",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            LazyColumn(
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.height(220.dp)
+                            ) {
+                                items(selectedPois) { poi ->
                                     RoutePointCard(
-                                        point = com.travelguide.domain.models.RoutePoint(
-                                            id = poiId,
-                                            orderIndex = selectedPOIs.indexOf(poiId) + 1,
-                                            poiId = poiId,
+                                        point = RoutePoint(
+                                            id = poi.id,
+                                            orderIndex = selectedPois.indexOfFirst { it.id == poi.id } + 1,
+                                            poiId = poi.id,
                                             poi = poi
                                         ),
-                                        onRemove = {
-                                            selectedPOIs = selectedPOIs.filter { it != poiId }
-                                        }
+                                        onRemove = { onRemovePoi(poi.id) }
                                     )
                                 }
                             }
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // Поиск объектов для добавления
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Добавить точки в маршрут",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        label = { Text("Поиск объектов") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Добавить точки в маршрут",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = onSearchChange,
+                            label = { Text("Поиск объектов") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
             }
 
-            // Список объектов для выбора
-            val filteredPOIs = MockData.pois.filter { poi ->
-                searchQuery.text.isEmpty() ||
-                        poi.name.contains(searchQuery.text, ignoreCase = true)
-            }
-
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(filteredPOIs) { poi ->
-                    POIAddCard(
-                        poi = poi,
-                        isSelected = selectedPOIs.contains(poi.id),
-                        onToggle = {
-                            selectedPOIs = if (selectedPOIs.contains(poi.id)) {
-                                selectedPOIs.filter { it != poi.id }
-                            } else {
-                                selectedPOIs + poi.id
-                            }
-                        }
-                    )
-                }
+            items(availablePois) { poi ->
+                POIAddCard(
+                    poi = poi,
+                    isSelected = selectedPois.any { it.id == poi.id },
+                    onToggle = { onTogglePoi(poi) }
+                )
             }
         }
     }
@@ -208,47 +228,35 @@ fun CreateRouteScreen(
 
 @Composable
 fun POIAddCard(
-    poi: com.travelguide.domain.models.POI,
+    poi: POI,
     isSelected: Boolean,
     onToggle: () -> Unit
 ) {
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected)
-                MaterialTheme.colorScheme.primaryContainer
-            else
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.secondaryContainer
+            } else {
                 MaterialTheme.colorScheme.surface
+            }
         ),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(
-                checked = isSelected,
-                onCheckedChange = { onToggle() }
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(poi.name, style = MaterialTheme.typography.titleMedium)
+            if (!poi.address.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = poi.name,
+                    poi.address,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = poi.poiType?.name ?: "Объект",
-                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            IconButton(
-                onClick = { /* TODO: предпросмотр */ },
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(Icons.Default.Info, contentDescription = "Подробнее")
+            Spacer(modifier = Modifier.height(8.dp))
+            TextButton(onClick = onToggle) {
+                Text(if (isSelected) "Убрать" else "Добавить")
             }
         }
     }
@@ -256,48 +264,28 @@ fun POIAddCard(
 
 @Composable
 fun RoutePointCard(
-    point: com.travelguide.domain.models.RoutePoint,
-    onRemove: () -> Unit = {}
+    point: RoutePoint,
+    onRemove: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
+    Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(32.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
+            Column {
+                Text("${point.orderIndex}. ${point.poiName ?: point.poi?.name.orEmpty()}")
+                if (!point.poiAddress.isNullOrBlank()) {
                     Text(
-                        text = "${point.orderIndex}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onPrimary
+                        point.poiAddress,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = point.poi?.name ?: "Точка маршрута",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(
-                    text = point.poi?.poiType?.name ?: "",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            IconButton(onClick = onRemove) {
-                Icon(Icons.Default.Delete, contentDescription = "Удалить")
+            TextButton(onClick = onRemove) {
+                Text("Удалить")
             }
         }
     }

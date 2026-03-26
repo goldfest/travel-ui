@@ -26,7 +26,7 @@ fun PoiDetailRoute(
     container: AppContainer,
     poiId: Int,
     onBackClick: () -> Unit,
-    onAddToRoute: () -> Unit,
+    onAddToRoute: (cityId: Int, poiId: Int) -> Unit,
     onAddToFavorite: (Boolean) -> Unit,
     onWriteReview: () -> Unit,
     onViewReviews: () -> Unit,
@@ -42,6 +42,8 @@ fun PoiDetailRoute(
             )
         }
     )
+
+
 
     val collectionVm: CollectionPickerViewModel = viewModel(
         key = "collection-picker-$poiId",
@@ -74,7 +76,10 @@ fun PoiDetailRoute(
         errorMessage = poiState.errorMessage,
         onRetry = { poiVm.loadPoi(poiId) },
         onBackClick = onBackClick,
-        onAddToRoute = onAddToRoute,
+        onAddToRoute = {
+            val poi = poiState.poi ?: return@POIDetailScreen
+            onAddToRoute(poi.cityId, poi.id)
+        },
         onAddToCollection = {
             showActionDialog = true
         },
