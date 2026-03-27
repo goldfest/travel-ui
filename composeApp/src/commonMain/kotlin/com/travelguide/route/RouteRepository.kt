@@ -3,6 +3,8 @@ package com.travelguide.route
 import com.travelguide.domain.models.POI
 import com.travelguide.domain.models.Route
 import com.travelguide.domain.models.RouteDay
+import com.travelguide.domain.models.RouteMap
+
 import com.travelguide.domain.models.RoutePoint
 import com.travelguide.domain.models.RouteStatus
 import com.travelguide.domain.models.TransportMode
@@ -102,6 +104,11 @@ class RouteRepository(
     suspend fun getPoisForRouteCreation(cityId: Int): List<POI> {
         return poiRepository.getPoisByCity(cityId)
     }
+
+    suspend fun getRouteMap(routeId: Int): RouteMap {
+        return api.getRouteMap(routeId.toLong()).toDomain()
+    }
+
 }
 
 private fun RouteResponseDto.toDomain(): Route {
@@ -169,3 +176,4 @@ private fun String.toTransportMode(): TransportMode {
 private fun String?.toRouteStatus(): RouteStatus {
     return runCatching { RouteStatus.valueOf(this ?: "READY") }.getOrDefault(RouteStatus.READY)
 }
+

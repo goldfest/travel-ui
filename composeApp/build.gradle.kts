@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -54,6 +55,10 @@ kotlin {
                 implementation(libs.ktor.client.okhttp)
 
                 implementation("io.coil-kt:coil-compose:2.6.0")
+
+                implementation("com.yandex.android:maps.mobile:4.33.1-lite")
+
+                implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.3")
             }
         }
     }
@@ -62,17 +67,27 @@ kotlin {
 tasks.withType<KotlinCompile>().configureEach {
     kotlinOptions.freeCompilerArgs += "-Xexpect-actual-classes"
 }
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        file.inputStream().use { load(it) }
+    }
+}
 
+val yandexApiKey = localProperties.getProperty("YANDEX_MAPKIT_API_KEY", "")
 android {
     namespace = "com.travelguide"
     compileSdk = 34
 
     defaultConfig {
         applicationId = "com.travelguide"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
+
+        manifestPlaceholders["YANDEX_MAPKIT_API_KEY"] = yandexApiKey
+        buildConfigField("String", "YANDEX_MAPKIT_API_KEY", "\"$yandexApiKey\"")
     }
 
     compileOptions {
@@ -82,6 +97,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {

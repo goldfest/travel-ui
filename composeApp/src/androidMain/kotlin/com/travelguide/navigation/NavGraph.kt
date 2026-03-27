@@ -13,10 +13,6 @@ import com.travelguide.profile.DeleteAccountRoute
 import com.travelguide.profile.EditProfileRoute
 import com.travelguide.profile.ProfileRoute
 import com.travelguide.ui.screens.admin.AdminScreen
-import com.travelguide.ui.screens.route.CreateRouteScreen
-import com.travelguide.ui.screens.route.RouteDetailScreen
-import com.travelguide.ui.screens.route.RouteListScreen
-import com.travelguide.ui.screens.route.RouteMapScreen
 import com.travelguide.city.CityInfoRoute
 import com.travelguide.city.CityListRoute
 import com.travelguide.favorite.FavoritesRoute

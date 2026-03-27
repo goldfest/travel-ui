@@ -35,16 +35,16 @@ class AppContainer(context: Context) {
         context.getSharedPreferences("travelguide_settings", Context.MODE_PRIVATE)
     )
 
-    private val authHostUrl = "http://10.0.2.2:8084"
+    private val authHostUrl = "http://192.168.1.9:8084"
     private val authApiBaseUrl = "$authHostUrl/api"
 
-    private val cityBaseUrl = "http://10.0.2.2:8082/api/cities"
-    private val poiBaseUrl = "http://10.0.2.2:8081/api/poi"
-    private val reviewBaseUrl = "http://10.0.2.2:8083/api/reviews"
+    private val cityBaseUrl = "http://192.168.1.9:8082/api/cities"
+    private val poiBaseUrl = "http://192.168.1.9:8081/api/poi"
+    private val reviewBaseUrl = "http://192.168.1.9:8083/api/reviews"
 
-    private val personalizationBaseUrl = "http://10.0.2.2:8085/api/personalization"
+    private val personalizationBaseUrl = "http://192.168.1.9:8085/api/personalization"
 
-    private val routeBaseUrl = "http://10.0.2.2:8087/api/routes"
+    private val routeBaseUrl = "http://192.168.1.9:8087/api/routes"
 
     val tokenStorage = TokenStorage(settings)
 

@@ -4,9 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.remember
 import com.travelguide.AppContainer
-import com.travelguide.auth.SimpleViewModelFactory
 import com.travelguide.ui.screens.route.RouteMapScreen
 
 @Composable
@@ -16,25 +15,18 @@ fun RouteMapRoute(
     onBackClick: () -> Unit,
     onViewList: () -> Unit
 ) {
-    val vm: RouteDetailViewModel = viewModel(
-        key = "route-map-$routeId",
-        factory = SimpleViewModelFactory {
-            RouteDetailViewModel(container.routeRepository)
-        }
-    )
-
-    val state by vm.state.collectAsState()
+    val viewModel = remember { RouteMapViewModel(container.routeRepository) }
+    val state by viewModel.state.collectAsState()
 
     LaunchedEffect(routeId) {
-        vm.loadRoute(routeId)
+        viewModel.loadRouteMap(routeId)
     }
 
     RouteMapScreen(
-        route = state.route,
-        isLoading = state.isLoading,
-        errorMessage = state.errorMessage,
-        onRetry = { vm.loadRoute(routeId) },
+        state = state,
+        onRetry = { viewModel.loadRouteMap(routeId) },
         onBackClick = onBackClick,
-        onViewList = onViewList
+        onViewList = onViewList,
+        onDaySelected = viewModel::selectDay
     )
 }

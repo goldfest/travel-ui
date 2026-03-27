@@ -13,6 +13,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import com.travelguide.network.dto.route.RouteMapResponseDto
 
 class RouteApi(
     private val client: HttpClient,
@@ -76,5 +77,9 @@ class RouteApi(
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()
+    }
+
+    suspend fun getRouteMap(routeId: Long): RouteMapResponseDto {
+        return client.get("$routesUrl/$routeId/map").body()
     }
 }
