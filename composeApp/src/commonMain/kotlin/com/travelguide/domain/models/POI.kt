@@ -11,7 +11,6 @@ data class POI(
     val cityId: Int,
     val poiTypeId: Int,
     val poiType: POIType? = null,
-    // Добавь недостающие поля:
     val tags: List<String> = emptyList(),
     val images: List<String> = emptyList(),
     val features: List<Feature> = emptyList()

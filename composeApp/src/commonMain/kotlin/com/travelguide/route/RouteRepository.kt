@@ -14,6 +14,7 @@ import com.travelguide.network.dto.route.GenerateRouteRequestDto
 import com.travelguide.network.dto.route.RouteDayResponseDto
 import com.travelguide.network.dto.route.RoutePointResponseDto
 import com.travelguide.network.dto.route.RouteResponseDto
+import com.travelguide.network.dto.route.UpdateRouteRequestDto
 import com.travelguide.network.route.RouteApi
 import com.travelguide.poi.PoiRepository
 
@@ -24,6 +25,10 @@ class RouteRepository(
     suspend fun getRoutes(archived: Boolean = false): List<Route> {
         val page = if (archived) api.getArchivedRoutes() else api.getRoutes()
         return page.content.map { it.toDomain() }
+    }
+
+    suspend fun getRoutesByCity(cityId: Int): List<Route> {
+        return api.getRoutesByCity(cityId.toLong()).map { it.toDomain() }
     }
 
     suspend fun getRouteById(id: Int): Route {
@@ -69,6 +74,46 @@ class RouteRepository(
         return api.createRoute(request).toDomain()
     }
 
+    suspend fun updateRouteMeta(
+        routeId: Int,
+        name: String,
+        description: String?,
+        transportMode: TransportMode
+    ): Route {
+        return api.updateRoute(
+            routeId = routeId.toLong(),
+            request = UpdateRouteRequestDto(
+                name = name,
+                description = description,
+                transportMode = transportMode.name
+            )
+        ).toDomain()
+    }
+
+    suspend fun addPoiToRoute(
+        routeId: Int,
+        poiId: Int,
+        dayNumber: Int,
+        orderIndex: Int? = null
+    ): Route {
+        return api.addPointToRoute(
+            routeId = routeId.toLong(),
+            poiId = poiId.toLong(),
+            dayNumber = dayNumber,
+            orderIndex = orderIndex
+        ).toDomain()
+    }
+
+    suspend fun removePointFromRoute(
+        routeId: Int,
+        routePointId: Int
+    ): Route {
+        return api.removePointFromRoute(
+            routeId = routeId.toLong(),
+            routePointId = routePointId.toLong()
+        ).toDomain()
+    }
+
     suspend fun reorderDayPoints(
         routeId: Int,
         dayId: Int,
@@ -103,6 +148,10 @@ class RouteRepository(
 
     suspend fun getPoisForRouteCreation(cityId: Int): List<POI> {
         return poiRepository.getPoisByCity(cityId)
+    }
+
+    suspend fun getPoiById(id: Int): POI {
+        return poiRepository.getPoiById(id)
     }
 
     suspend fun getRouteMap(routeId: Int): RouteMap {

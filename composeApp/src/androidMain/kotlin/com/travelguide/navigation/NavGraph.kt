@@ -8,11 +8,6 @@ import com.travelguide.AppContainer
 import com.travelguide.BootRoute
 import com.travelguide.auth.LoginRoute
 import com.travelguide.auth.RegisterRoute
-import com.travelguide.profile.ChangePasswordRoute
-import com.travelguide.profile.DeleteAccountRoute
-import com.travelguide.profile.EditProfileRoute
-import com.travelguide.profile.ProfileRoute
-import com.travelguide.ui.screens.admin.AdminScreen
 import com.travelguide.city.CityInfoRoute
 import com.travelguide.city.CityListRoute
 import com.travelguide.favorite.FavoritesRoute
@@ -20,16 +15,22 @@ import com.travelguide.personalisation.CollectionEditRoute
 import com.travelguide.personalisation.CollectionsRoute
 import com.travelguide.poi.POIListRoute
 import com.travelguide.poi.PoiDetailRoute
+import com.travelguide.profile.ChangePasswordRoute
+import com.travelguide.profile.DeleteAccountRoute
+import com.travelguide.profile.EditProfileRoute
+import com.travelguide.profile.ProfileRoute
 import com.travelguide.review.CreateReportRoute
 import com.travelguide.review.CreateReviewRoute
 import com.travelguide.review.EditReviewRoute
 import com.travelguide.review.MyReviewsRoute
 import com.travelguide.review.ReviewsRoute
-import com.travelguide.route.CreateRouteRoute
 import com.travelguide.route.RouteDetailRoute
+import com.travelguide.route.RouteEditorRoute
 import com.travelguide.route.RouteListRoute
 import com.travelguide.route.RouteMapRoute
+import com.travelguide.route.SelectRouteForPoiRoute
 import com.travelguide.search.SearchRoute
+import com.travelguide.ui.screens.admin.AdminScreen
 
 @Composable
 fun AppNavHost(
@@ -53,7 +54,11 @@ fun AppNavHost(
         composable("login") {
             LoginRoute(
                 container = container,
-                onLoginSuccess = { navController.navigate("cityList") { popUpTo("login"){inclusive=true} } },
+                onLoginSuccess = {
+                    navController.navigate("cityList") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                },
                 onRegisterClick = { navController.navigate("register") }
             )
         }
@@ -61,12 +66,15 @@ fun AppNavHost(
         composable("register") {
             RegisterRoute(
                 container = container,
-                onRegisterSuccess = { navController.navigate("cityList") { popUpTo("register"){inclusive=true} } },
+                onRegisterSuccess = {
+                    navController.navigate("cityList") {
+                        popUpTo("register") { inclusive = true }
+                    }
+                },
                 onLoginClick = { navController.popBackStack() }
             )
         }
 
-        // Cities
         composable("cityList") {
             CityListRoute(
                 container = container,
@@ -88,7 +96,6 @@ fun AppNavHost(
             )
         }
 
-        // POI
         composable("poiDetail/{poiId}") { backStackEntry ->
             val poiId = backStackEntry.arguments?.getString("poiId")?.toIntOrNull() ?: 1
 
@@ -96,13 +103,33 @@ fun AppNavHost(
                 container = container,
                 poiId = poiId,
                 onBackClick = { navController.popBackStack() },
-                onAddToRoute = { cityId, selectedPoiId ->
-                    navController.navigate("createRoute/$cityId?poiId=$selectedPoiId")
+                onCreateNewRoute = { cityId, selectedPoiId ->
+                    navController.navigate("routeEditor?cityId=$cityId&poiId=$selectedPoiId")
+                },
+                onChooseExistingRoute = { cityId, selectedPoiId ->
+                    navController.navigate("selectRouteForPoi/$cityId/$selectedPoiId")
                 },
                 onAddToFavorite = { },
                 onWriteReview = { navController.navigate("createReview/$poiId") },
                 onViewReviews = { navController.navigate("reviews/$poiId") },
                 onReportProblem = { navController.navigate("createReport/$poiId") }
+            )
+        }
+
+        composable("selectRouteForPoi/{cityId}/{poiId}") { backStackEntry ->
+            val cityId = backStackEntry.arguments?.getString("cityId")?.toIntOrNull() ?: 1
+            val poiId = backStackEntry.arguments?.getString("poiId")?.toIntOrNull() ?: 1
+
+            SelectRouteForPoiRoute(
+                container = container,
+                cityId = cityId,
+                poiId = poiId,
+                onBackClick = { navController.popBackStack() },
+                onAdded = { routeId ->
+                    navController.navigate("routeDetail/$routeId") {
+                        popUpTo("poiDetail/$poiId") { inclusive = false }
+                    }
+                }
             )
         }
 
@@ -118,7 +145,6 @@ fun AppNavHost(
             )
         }
 
-        // Reviews
         composable("reviews/{poiId}") { backStackEntry ->
             val poiId = backStackEntry.arguments?.getString("poiId")?.toIntOrNull() ?: 1
             ReviewsRoute(
@@ -126,7 +152,7 @@ fun AppNavHost(
                 poiId = poiId,
                 onBackClick = { navController.popBackStack() },
                 onWriteReview = { navController.navigate("createReview/$poiId") },
-                onReportReview = { /* позже можно route для review report */ }
+                onReportReview = { }
             )
         }
 
@@ -168,7 +194,6 @@ fun AppNavHost(
             )
         }
 
-        // Search
         composable("search") {
             SearchRoute(
                 container = container,
@@ -177,27 +202,45 @@ fun AppNavHost(
             )
         }
 
-        // Routes
         composable("routes") {
             RouteListRoute(
                 container = container,
                 onBackClick = { navController.popBackStack() },
-                onRouteClick = { routeId -> navController.navigate("routeDetail/$routeId") }
+                onRouteClick = { routeId -> navController.navigate("routeDetail/$routeId") },
+                onCreateRoute = { navController.navigate("routeEditor?cityId=&poiId=") }
             )
         }
 
-        composable("createRoute/{cityId}?poiId={poiId}") { backStackEntry ->
-            val cityId = backStackEntry.arguments?.getString("cityId")?.toIntOrNull() ?: return@composable
+        composable("routeEditor?cityId={cityId}&poiId={poiId}") { backStackEntry ->
+            val cityId = backStackEntry.arguments?.getString("cityId")?.toIntOrNull()
             val poiId = backStackEntry.arguments?.getString("poiId")?.toIntOrNull()
 
-            CreateRouteRoute(
+            RouteEditorRoute(
                 container = container,
+                routeId = null,
                 cityId = cityId,
                 initialPoiId = poiId,
                 onBackClick = { navController.popBackStack() },
-                onSubmit = { routeId ->
+                onSaved = { routeId ->
                     navController.navigate("routeDetail/$routeId") {
-                        popUpTo("createRoute/$cityId?poiId=${poiId ?: ""}") { inclusive = true }
+                        popUpTo("routeEditor?cityId={cityId}&poiId={poiId}") { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable("routeEditor/edit/{routeId}") { backStackEntry ->
+            val routeId = backStackEntry.arguments?.getString("routeId")?.toIntOrNull() ?: return@composable
+
+            RouteEditorRoute(
+                container = container,
+                routeId = routeId,
+                cityId = null,
+                initialPoiId = null,
+                onBackClick = { navController.popBackStack() },
+                onSaved = { savedId ->
+                    navController.navigate("routeDetail/$savedId") {
+                        popUpTo("routeEditor/edit/$routeId") { inclusive = true }
                     }
                 }
             )
@@ -210,9 +253,9 @@ fun AppNavHost(
                 container = container,
                 routeId = routeId,
                 onBackClick = { navController.popBackStack() },
-                onEditClick = { },
+                onEditClick = { navController.navigate("routeEditor/edit/$routeId") },
                 onViewMap = { navController.navigate("routeMap/$routeId") },
-                onViewList = { },
+                onViewList = { }
             )
         }
 
@@ -227,7 +270,6 @@ fun AppNavHost(
             )
         }
 
-        // Personalization
         composable("favorites") {
             FavoritesRoute(
                 container = container,
@@ -253,19 +295,19 @@ fun AppNavHost(
                 container = container,
                 collectionId = collectionId,
                 onBackClick = { navController.popBackStack() },
-                onDeleted = {
-                    navController.popBackStack()
-                },
+                onDeleted = { navController.popBackStack() },
                 onCollectionUpdated = { }
             )
         }
-        // Profile
+
         composable("profile") {
             ProfileRoute(
                 container = container,
                 onBackClick = { navController.popBackStack() },
                 onLogoutNavigate = {
-                    navController.navigate("login") { popUpTo("cityList") { inclusive = true } }
+                    navController.navigate("login") {
+                        popUpTo("cityList") { inclusive = true }
+                    }
                 },
                 onFavoritesClick = { navController.navigate("favorites") },
                 onRoutesClick = { navController.navigate("routes") },
@@ -282,7 +324,7 @@ fun AppNavHost(
             EditProfileRoute(
                 container = container,
                 onBackClick = { navController.popBackStack() },
-                onSaved = { navController.popBackStack() } // вернуться в профиль
+                onSaved = { navController.popBackStack() }
             )
         }
 
@@ -299,7 +341,9 @@ fun AppNavHost(
                 container = container,
                 onBackClick = { navController.popBackStack() },
                 onDeleted = {
-                    navController.navigate("login") { popUpTo("cityList") { inclusive = true } }
+                    navController.navigate("login") {
+                        popUpTo("cityList") { inclusive = true }
+                    }
                 }
             )
         }

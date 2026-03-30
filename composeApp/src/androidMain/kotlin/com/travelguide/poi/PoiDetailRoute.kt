@@ -1,6 +1,5 @@
 package com.travelguide.poi
 
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
@@ -18,6 +17,7 @@ import com.travelguide.personalisation.CollectionPickerViewModel
 import com.travelguide.ui.screens.personalisation.AddToCollectionDialog
 import com.travelguide.ui.screens.personalisation.CollectionActionDialog
 import com.travelguide.ui.screens.personalisation.CreateCollectionDialog
+import com.travelguide.ui.screens.poi.AddToRouteActionSheet
 import com.travelguide.ui.screens.poi.POIDetailScreen
 import kotlinx.coroutines.launch
 
@@ -26,7 +26,8 @@ fun PoiDetailRoute(
     container: AppContainer,
     poiId: Int,
     onBackClick: () -> Unit,
-    onAddToRoute: (cityId: Int, poiId: Int) -> Unit,
+    onCreateNewRoute: (cityId: Int, poiId: Int) -> Unit,
+    onChooseExistingRoute: (cityId: Int, poiId: Int) -> Unit,
     onAddToFavorite: (Boolean) -> Unit,
     onWriteReview: () -> Unit,
     onViewReviews: () -> Unit,
@@ -43,8 +44,6 @@ fun PoiDetailRoute(
         }
     )
 
-
-
     val collectionVm: CollectionPickerViewModel = viewModel(
         key = "collection-picker-$poiId",
         factory = SimpleViewModelFactory {
@@ -58,6 +57,7 @@ fun PoiDetailRoute(
     var showActionDialog by remember { mutableStateOf(false) }
     var showCollectionDialog by remember { mutableStateOf(false) }
     var showCreateDialog by remember { mutableStateOf(false) }
+    var showRouteActionSheet by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -65,7 +65,6 @@ fun PoiDetailRoute(
     LaunchedEffect(poiId) {
         poiVm.loadPoi(poiId)
     }
-
 
     POIDetailScreen(
         poi = poiState.poi,
@@ -77,8 +76,7 @@ fun PoiDetailRoute(
         onRetry = { poiVm.loadPoi(poiId) },
         onBackClick = onBackClick,
         onAddToRoute = {
-            val poi = poiState.poi ?: return@POIDetailScreen
-            onAddToRoute(poi.cityId, poi.id)
+            showRouteActionSheet = true
         },
         onAddToCollection = {
             showActionDialog = true
@@ -94,6 +92,21 @@ fun PoiDetailRoute(
         }
     )
 
+    if (showRouteActionSheet) {
+        AddToRouteActionSheet(
+            onDismiss = { showRouteActionSheet = false },
+            onCreateNew = {
+                val poi = poiState.poi ?: return@AddToRouteActionSheet
+                showRouteActionSheet = false
+                onCreateNewRoute(poi.cityId, poi.id)
+            },
+            onChooseExisting = {
+                val poi = poiState.poi ?: return@AddToRouteActionSheet
+                showRouteActionSheet = false
+                onChooseExistingRoute(poi.cityId, poi.id)
+            }
+        )
+    }
 
     if (showActionDialog) {
         CollectionActionDialog(

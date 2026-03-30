@@ -17,17 +17,6 @@ data class RouteDetailUiState(
     val errorMessage: String? = null
 )
 
-data class EditableRoutePointUi(
-    val poi: POI,
-    val estimatedVisitMinutes: Int = 60
-)
-
-data class EditableRouteDayUi(
-    val dayNumber: Int,
-    val description: String = "",
-    val points: List<EditableRoutePointUi> = emptyList()
-)
-
 data class CreateRouteUiState(
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,

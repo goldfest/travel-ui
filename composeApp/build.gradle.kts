@@ -39,6 +39,7 @@ kotlin {
                 implementation(libs.settings)
                 implementation(libs.ktor.client.auth)
 
+
             }
         }
 
@@ -59,6 +60,8 @@ kotlin {
                 implementation("com.yandex.android:maps.mobile:4.33.1-lite")
 
                 implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.3")
+
+
             }
         }
     }
