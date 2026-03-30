@@ -1,13 +1,19 @@
 package com.travelguide.ui.screens.route
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -15,25 +21,36 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Route
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.Button
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.travelguide.domain.models.Route
 import com.travelguide.domain.models.RouteDay
+import com.travelguide.domain.models.RoutePoint
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,7 +68,13 @@ fun RouteDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(route?.name ?: "Маршрут") },
+                title = {
+                    Text(
+                        text = route?.name ?: "Маршрут",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
@@ -77,17 +100,17 @@ fun RouteDetailScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
                     ) {
                         FilledTonalButton(onClick = onOptimizeClick) {
                             Icon(Icons.Default.Tune, contentDescription = null)
-                            Spacer(modifier = Modifier.padding(4.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text("Оптимизировать")
                         }
 
                         FilledTonalButton(onClick = { }) {
                             Icon(Icons.Default.Download, contentDescription = null)
-                            Spacer(modifier = Modifier.padding(4.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text("Экспорт")
                         }
                     }
@@ -101,7 +124,8 @@ fun RouteDetailScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
-                        .padding(24.dp)
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.Center
                 ) {
                     Text("Загрузка маршрута…")
                 }
@@ -112,7 +136,8 @@ fun RouteDetailScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
-                        .padding(24.dp)
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.Center
                 ) {
                     Text(errorMessage, color = MaterialTheme.colorScheme.error)
                     Button(onClick = onRetry, modifier = Modifier.padding(top = 12.dp)) {
@@ -125,87 +150,359 @@ fun RouteDetailScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues)
+                        .padding(paddingValues),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     item {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            if (!route.description.isNullOrBlank()) {
-                                Text(
-                                    text = route.description,
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                            }
+                        RouteHeroSection(
+                            route = route,
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)
+                        )
+                    }
 
-                            Card(modifier = Modifier.fillMaxWidth()) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    StatColumn(route.distanceKm?.toString() ?: "-", "км")
-                                    StatColumn(route.durationMin?.toString() ?: "-", "минут")
-                                    StatColumn(route.points.size.toString(), "точек")
-                                }
-                            }
+                    item {
+                        StatsSection(
+                            route = route,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                    }
 
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "Детали маршрута",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("Режим: ${route.transportModeText()}")
-                            Text("Статус: ${route.status.label()}")
-                            Text("Оптимизация: ${if (route.isOptimized) "Да" else "Нет"}")
-
-                            route.startPoint?.let { Text("Начало: $it") }
-                            route.endPoint?.let { Text("Конец: $it") }
-
-                            if (route.warnings.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    text = "Предупреждения",
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                route.warnings.forEach {
-                                    Text("• $it", color = MaterialTheme.colorScheme.error)
-                                }
-                            }
-                        }
+                    item {
+                        RouteInfoCard(
+                            route = route,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
                     }
 
                     if (route.days.isNotEmpty()) {
                         item {
-                            Text(
-                                text = "Дни маршрута",
-                                style = MaterialTheme.typography.titleLarge,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            SectionHeader(
+                                title = "План по дням",
+                                subtitle = "${route.days.size} ${pluralDays(route.days.size)}",
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                             )
                         }
+
                         items(route.days) { day ->
-                            DayCard(day = day, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                            DayOverviewCard(
+                                day = day,
+                                modifier = Modifier.padding(horizontal = 16.dp)
+                            )
                         }
                     }
 
                     if (route.points.isNotEmpty()) {
                         item {
-                            Text(
-                                text = "Все точки маршрута (${route.points.size})",
-                                style = MaterialTheme.typography.titleLarge,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            SectionHeader(
+                                title = "Все точки маршрута",
+                                subtitle = "${route.points.size} ${pluralPoints(route.points.size)}",
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                             )
                         }
+
                         items(route.points) { point ->
                             RoutePointItem(
                                 point = point,
                                 modifier = Modifier
-                                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                                    .padding(horizontal = 16.dp)
                                     .fillMaxWidth()
                             )
                         }
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun RouteHeroSection(
+    route: Route,
+    modifier: Modifier = Modifier
+) {
+    ElevatedCard(
+        modifier = modifier.fillMaxWidth(),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 3.dp)
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Text(
+                text = route.name,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+
+            if (!route.description.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = route.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                RouteTag(route.transportModeText())
+                RouteTag(route.status.label())
+                RouteTag(if (route.isOptimized) "Оптимизирован" else "Без оптимизации")
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun StatsSection(
+    route: Route,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = "Статистика",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            StatCard(
+                title = route.distanceKm?.let { formatDistance(it) } ?: "-",
+                subtitle = "Дистанция",
+                icon = { Icon(Icons.Default.Route, contentDescription = null) },
+                modifier = Modifier.fillMaxWidth(0.48f)
+            )
+            StatCard(
+                title = route.durationMin?.let { "$it мин" } ?: "-",
+                subtitle = "Время",
+                icon = { Icon(Icons.Default.Schedule, contentDescription = null) },
+                modifier = Modifier.fillMaxWidth(0.48f)
+            )
+            StatCard(
+                title = route.points.size.toString(),
+                subtitle = "Точек",
+                icon = { Icon(Icons.Default.Place, contentDescription = null) },
+                modifier = Modifier.fillMaxWidth(0.48f)
+            )
+            StatCard(
+                title = route.days.size.toString(),
+                subtitle = "Дней",
+                icon = { Icon(Icons.Default.Map, contentDescription = null) },
+                modifier = Modifier.fillMaxWidth(0.48f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatCard(
+    title: String,
+    subtitle: String,
+    icon: @Composable () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Surface(
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .padding(10.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    icon()
+                }
+            }
+
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun RouteInfoCard(
+    route: Route,
+    modifier: Modifier = Modifier
+) {
+    ElevatedCard(
+        modifier = modifier.fillMaxWidth(),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Информация о маршруте",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            InfoRow("Режим", route.transportModeText())
+            InfoRow("Статус", route.status.label())
+            InfoRow("Оптимизация", if (route.isOptimized) "Да" else "Нет")
+
+            route.startPoint?.let { InfoRow("Начало", it) }
+            route.endPoint?.let { InfoRow("Конец", it) }
+
+            if (route.warnings.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = "Предупреждения",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.error
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                route.warnings.forEach { warning ->
+                    Text(
+                        text = "• $warning",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(vertical = 2.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun InfoRow(
+    label: String,
+    value: String
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 5.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun SectionHeader(
+    title: String,
+    subtitle: String,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            text = subtitle,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+fun DayOverviewCard(
+    day: RouteDay,
+    modifier: Modifier = Modifier
+) {
+    ElevatedCard(
+        modifier = modifier.fillMaxWidth(),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column {
+                    Text(
+                        text = "День ${day.dayNumber}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    val pointCount = day.points.size
+                    Text(
+                        text = "$pointCount ${pluralPoints(pointCount)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Surface(
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Text(
+                        text = "${day.points.size}",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            if (!day.description.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = day.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            if (day.points.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(14.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    day.points.sortedBy { it.orderIndex }.forEach { point ->
+                        DayPointRow(point = point)
                     }
                 }
             }
@@ -214,34 +511,48 @@ fun RouteDetailScreen(
 }
 
 @Composable
-private fun StatColumn(value: String, label: String) {
-    Column {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
-        Text(label, style = MaterialTheme.typography.labelMedium)
-    }
-}
+private fun DayPointRow(point: RoutePoint) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(MaterialTheme.shapes.small)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = point.orderIndex.toString(),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold
+            )
+        }
 
-@Composable
-fun DayCard(day: RouteDay, modifier: Modifier = Modifier) {
-    Card(modifier = modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("День ${day.dayNumber}", style = MaterialTheme.typography.titleMedium)
-            if (!day.description.isNullOrBlank()) {
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = point.poiName ?: point.poi?.name.orEmpty(),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium
+            )
+
+            if (!point.poiAddress.isNullOrBlank()) {
                 Text(
-                    day.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 4.dp)
+                    text = point.poiAddress,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            if (day.points.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                day.points.forEach { point ->
-                    Text("${point.orderIndex}. ${point.poiName ?: point.poi?.name.orEmpty()}")
-                }
+
+            point.estimatedVisitMinutes?.let {
+                Text(
+                    text = "Посещение: $it мин",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -249,27 +560,80 @@ fun DayCard(day: RouteDay, modifier: Modifier = Modifier) {
 
 @Composable
 fun RoutePointItem(
-    point: com.travelguide.domain.models.RoutePoint,
+    point: RoutePoint,
     modifier: Modifier = Modifier
 ) {
-    Card(modifier = modifier) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.55f)
+        )
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = "${point.orderIndex}. ${point.poiName ?: point.poi?.name.orEmpty()}",
-                style = MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
             )
+
             if (!point.poiAddress.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    point.poiAddress,
+                    text = point.poiAddress,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Text(
-                "Посещение: ${point.estimatedVisitMinutes} мин",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 6.dp)
-            )
+
+            point.estimatedVisitMinutes?.let {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Посещение: $it мин",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun RouteTag(text: String) {
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f)
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.labelLarge
+        )
+    }
+}
+
+private fun formatDistance(distanceKm: Double): String {
+    return if (distanceKm % 1.0 == 0.0) {
+        "${distanceKm.toInt()} км"
+    } else {
+        "%.1f км".format(distanceKm)
+    }
+}
+
+private fun pluralDays(count: Int): String {
+    val mod10 = count % 10
+    val mod100 = count % 100
+    return when {
+        mod10 == 1 && mod100 != 11 -> "день"
+        mod10 in 2..4 && mod100 !in 12..14 -> "дня"
+        else -> "дней"
+    }
+}
+
+private fun pluralPoints(count: Int): String {
+    val mod10 = count % 10
+    val mod100 = count % 100
+    return when {
+        mod10 == 1 && mod100 != 11 -> "точка"
+        mod10 in 2..4 && mod100 !in 12..14 -> "точки"
+        else -> "точек"
     }
 }

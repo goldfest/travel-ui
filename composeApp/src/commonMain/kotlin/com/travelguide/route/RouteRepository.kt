@@ -4,7 +4,6 @@ import com.travelguide.domain.models.POI
 import com.travelguide.domain.models.Route
 import com.travelguide.domain.models.RouteDay
 import com.travelguide.domain.models.RouteMap
-
 import com.travelguide.domain.models.RoutePoint
 import com.travelguide.domain.models.RouteStatus
 import com.travelguide.domain.models.TransportMode
@@ -36,18 +35,25 @@ class RouteRepository(
         name: String,
         description: String?,
         transportMode: TransportMode,
-        selectedPois: List<POI>,
-        estimatedVisitMinutes: Int = 60,
+        days: List<EditableRouteDayUi>,
         status: RouteStatus = RouteStatus.READY,
         autoOptimize: Boolean = true
     ): Route {
-        val points = selectedPois.mapIndexed { index, poi ->
-            CreateRoutePointRequestDto(
-                poiId = poi.id.toLong(),
-                orderIndex = index + 1,
-                estimatedVisitMinutes = estimatedVisitMinutes
-            )
-        }
+        val requestDays = days
+            .filter { it.points.isNotEmpty() }
+            .map { day ->
+                CreateRouteDayRequestDto(
+                    dayNumber = day.dayNumber,
+                    description = day.description.ifBlank { null },
+                    points = day.points.mapIndexed { index, point ->
+                        CreateRoutePointRequestDto(
+                            poiId = point.poi.id.toLong(),
+                            orderIndex = index + 1,
+                            estimatedVisitMinutes = point.estimatedVisitMinutes
+                        )
+                    }
+                )
+            }
 
         val request = CreateRouteRequestDto(
             name = name,
@@ -57,13 +63,7 @@ class RouteRepository(
             status = status.name,
             autoOptimize = autoOptimize,
             optimizationMode = if (autoOptimize) "distance" else null,
-            days = listOf(
-                CreateRouteDayRequestDto(
-                    dayNumber = 1,
-                    description = null,
-                    points = points
-                )
-            )
+            days = requestDays
         )
 
         return api.createRoute(request).toDomain()
@@ -108,7 +108,6 @@ class RouteRepository(
     suspend fun getRouteMap(routeId: Int): RouteMap {
         return api.getRouteMap(routeId.toLong()).toDomain()
     }
-
 }
 
 private fun RouteResponseDto.toDomain(): Route {
@@ -176,4 +175,3 @@ private fun String.toTransportMode(): TransportMode {
 private fun String?.toRouteStatus(): RouteStatus {
     return runCatching { RouteStatus.valueOf(this ?: "READY") }.getOrDefault(RouteStatus.READY)
 }
-

@@ -12,6 +12,7 @@ data class RouteMapUiState(
     val isLoading: Boolean = false,
     val routeMap: RouteMap? = null,
     val selectedDayNumber: Int? = null,
+    val selectedPointId: Int? = null,
     val errorMessage: String? = null
 )
 
@@ -29,10 +30,14 @@ class RouteMapViewModel(
             runCatching {
                 repository.getRouteMap(routeId)
             }.onSuccess { map ->
+                val firstDay = map.days.firstOrNull()
+                val firstPoint = firstDay?.points?.firstOrNull()
+
                 _state.value = RouteMapUiState(
                     isLoading = false,
                     routeMap = map,
-                    selectedDayNumber = map.days.firstOrNull()?.dayNumber
+                    selectedDayNumber = firstDay?.dayNumber,
+                    selectedPointId = firstPoint?.routePointId
                 )
             }.onFailure { e ->
                 _state.value = RouteMapUiState(
@@ -43,7 +48,20 @@ class RouteMapViewModel(
         }
     }
 
+
     fun selectDay(dayNumber: Int) {
-        _state.value = _state.value.copy(selectedDayNumber = dayNumber)
+        val points = _state.value.routeMap?.days
+            ?.firstOrNull { it.dayNumber == dayNumber }
+            ?.points
+            .orEmpty()
+
+        _state.value = _state.value.copy(
+            selectedDayNumber = dayNumber,
+            selectedPointId = points.firstOrNull()?.routePointId
+        )
+    }
+
+    fun selectPoint(pointId: Int) {
+        _state.value = _state.value.copy(selectedPointId = pointId)
     }
 }

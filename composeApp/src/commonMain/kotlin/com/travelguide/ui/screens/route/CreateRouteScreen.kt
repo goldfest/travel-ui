@@ -9,10 +9,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -31,10 +34,12 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.travelguide.domain.models.POI
 import com.travelguide.domain.models.RoutePoint
 import com.travelguide.domain.models.TransportMode
+import com.travelguide.route.EditableRouteDayUi
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,19 +49,26 @@ fun CreateRouteScreen(
     selectedTransport: TransportMode,
     searchQuery: String,
     availablePois: List<POI>,
-    selectedPois: List<POI>,
+    days: List<EditableRouteDayUi>,
+    selectedDayNumber: Int,
     isLoading: Boolean,
+    isSaving: Boolean,
     errorMessage: String?,
     onBackClick: () -> Unit,
     onNameChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onTransportChange: (TransportMode) -> Unit,
     onSearchChange: (String) -> Unit,
-    onTogglePoi: (POI) -> Unit,
-    onRemovePoi: (Int) -> Unit,
+    onSelectDay: (Int) -> Unit,
+    onAddDay: () -> Unit,
+    onRemoveDay: (Int) -> Unit,
+    onDayDescriptionChange: (Int, String) -> Unit,
+    onAddPoiToDay: (POI) -> Unit,
+    onRemovePoiFromDay: (Int, Int) -> Unit,
     onSubmitClick: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    val selectedDay = days.firstOrNull { it.dayNumber == selectedDayNumber }
 
     Scaffold(
         topBar = {
@@ -70,9 +82,9 @@ fun CreateRouteScreen(
                 actions = {
                     TextButton(
                         onClick = onSubmitClick,
-                        enabled = !isLoading && routeName.isNotBlank() && selectedPois.isNotEmpty()
+                        enabled = !isSaving && routeName.isNotBlank() && days.any { it.points.isNotEmpty() }
                     ) {
-                        Text("Создать")
+                        Text(if (isSaving) "Сохранение..." else "Создать")
                     }
                 }
             )
@@ -131,7 +143,9 @@ fun CreateRouteScreen(
                             text = "Режим передвижения",
                             style = MaterialTheme.typography.labelLarge
                         )
+
                         Spacer(modifier = Modifier.height(8.dp))
+
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.fillMaxWidth()
@@ -158,7 +172,79 @@ fun CreateRouteScreen(
                 }
             }
 
-            if (selectedPois.isNotEmpty()) {
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Дни маршрута",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            days.forEach { day ->
+                                FilterChip(
+                                    selected = day.dayNumber == selectedDayNumber,
+                                    onClick = { onSelectDay(day.dayNumber) },
+                                    label = { Text("День ${day.dayNumber}") }
+                                )
+                            }
+
+                            FilterChip(
+                                selected = false,
+                                onClick = onAddDay,
+                                label = { Text("Добавить") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Add, contentDescription = null)
+                                }
+                            )
+                        }
+
+                        if (selectedDay != null) {
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Описание дня ${selectedDay.dayNumber}",
+                                    style = MaterialTheme.typography.labelLarge
+                                )
+
+                                if (days.size > 1) {
+                                    TextButton(onClick = { onRemoveDay(selectedDay.dayNumber) }) {
+                                        Icon(Icons.Default.Close, contentDescription = null)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Удалить день")
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            OutlinedTextField(
+                                value = selectedDay.description,
+                                onValueChange = { onDayDescriptionChange(selectedDay.dayNumber, it) },
+                                label = { Text("Описание дня") },
+                                modifier = Modifier.fillMaxWidth(),
+                                maxLines = 3
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (selectedDay != null && selectedDay.points.isNotEmpty()) {
                 item {
                     Card(
                         modifier = Modifier
@@ -167,24 +253,25 @@ fun CreateRouteScreen(
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(
-                                text = "Выбранные точки (${selectedPois.size})",
+                                text = "Точки дня ${selectedDay.dayNumber} (${selectedDay.points.size})",
                                 style = MaterialTheme.typography.titleMedium
                             )
+
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            LazyColumn(
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.height(220.dp)
-                            ) {
-                                items(selectedPois) { poi ->
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                selectedDay.points.forEachIndexed { index, point ->
                                     RoutePointCard(
                                         point = RoutePoint(
-                                            id = poi.id,
-                                            orderIndex = selectedPois.indexOfFirst { it.id == poi.id } + 1,
-                                            poiId = poi.id,
-                                            poi = poi
+                                            id = point.poi.id,
+                                            orderIndex = index + 1,
+                                            poiId = point.poi.id,
+                                            poi = point.poi,
+                                            estimatedVisitMinutes = point.estimatedVisitMinutes
                                         ),
-                                        onRemove = { onRemovePoi(poi.id) }
+                                        onRemove = {
+                                            onRemovePoiFromDay(selectedDay.dayNumber, point.poi.id)
+                                        }
                                     )
                                 }
                             }
@@ -201,10 +288,12 @@ fun CreateRouteScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = "Добавить точки в маршрут",
+                            text = "Добавить точки в день ${selectedDayNumber}",
                             style = MaterialTheme.typography.titleMedium
                         )
+
                         Spacer(modifier = Modifier.height(8.dp))
+
                         OutlinedTextField(
                             value = searchQuery,
                             onValueChange = onSearchChange,
@@ -218,8 +307,13 @@ fun CreateRouteScreen(
             items(availablePois) { poi ->
                 POIAddCard(
                     poi = poi,
-                    isSelected = selectedPois.any { it.id == poi.id },
-                    onToggle = { onTogglePoi(poi) }
+                    isSelected = selectedDay?.points?.any { it.poi.id == poi.id } == true,
+                    onToggle = {
+                        val alreadySelected = selectedDay?.points?.any { it.poi.id == poi.id } == true
+                        if (!alreadySelected) {
+                            onAddPoiToDay(poi)
+                        }
+                    }
                 )
             }
         }
@@ -246,6 +340,7 @@ fun POIAddCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(poi.name, style = MaterialTheme.typography.titleMedium)
+
             if (!poi.address.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -254,9 +349,14 @@ fun POIAddCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+
             Spacer(modifier = Modifier.height(8.dp))
-            TextButton(onClick = onToggle) {
-                Text(if (isSelected) "Убрать" else "Добавить")
+
+            TextButton(
+                onClick = onToggle,
+                enabled = !isSelected
+            ) {
+                Text(if (isSelected) "Уже добавлено" else "Добавить")
             }
         }
     }
@@ -274,8 +374,9 @@ fun RoutePointCard(
                 .padding(12.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text("${point.orderIndex}. ${point.poiName ?: point.poi?.name.orEmpty()}")
+
                 if (!point.poiAddress.isNullOrBlank()) {
                     Text(
                         point.poiAddress,
@@ -283,7 +384,16 @@ fun RoutePointCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "Посещение: ${point.estimatedVisitMinutes} мин",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
+
             TextButton(onClick = onRemove) {
                 Text("Удалить")
             }

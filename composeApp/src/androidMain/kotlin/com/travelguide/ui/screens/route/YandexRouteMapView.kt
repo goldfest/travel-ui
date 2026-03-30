@@ -3,6 +3,10 @@ package com.travelguide.ui.screens.route
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
@@ -11,20 +15,22 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.travelguide.domain.models.RouteMapDay
 import com.yandex.mapkit.MapKitFactory
-import com.yandex.mapkit.geometry.Point
 import com.yandex.mapkit.geometry.Polyline
-import com.yandex.mapkit.map.CameraPosition
+import com.yandex.mapkit.map.MapObjectTapListener
 import com.yandex.mapkit.mapview.MapView
 
 @Composable
 fun YandexRouteMapView(
     day: RouteMapDay?,
-    modifier: Modifier = Modifier
+    selectedPointId: Int?,
+    modifier: Modifier = Modifier,
+    onPointClick: (Int) -> Unit = {}
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-
     val mapView = rememberMapViewWithLifecycle(context, lifecycleOwner)
+
+    var lastRenderedKey by remember { mutableStateOf<String?>(null) }
 
     AndroidView(
         factory = { mapView },
@@ -32,35 +38,56 @@ fun YandexRouteMapView(
         update = { mv ->
             val map = mv.mapWindow.map
             val objects = map.mapObjects
-            objects.clear()
-
             val currentDay = day ?: return@AndroidView
 
-            val coordinates = currentDay.polyline?.coordinates.orEmpty()
-            if (coordinates.size >= 2) {
-                val polyline = Polyline(
-                    coordinates.map { Point(it.latitude, it.longitude) }
-                )
-                objects.addPolyline(polyline).apply {
-                    strokeWidth = 5f
-                }
-            }
+            val renderKey = "${currentDay.dayNumber}_${selectedPointId}_${currentDay.points.size}"
 
-            currentDay.points.forEach { point ->
-                val placemark = objects.addPlacemark(Point(point.latitude, point.longitude))
-                placemark.setText((point.orderIndex).toString())
-            }
+            if (lastRenderedKey != renderKey) {
+                objects.clear()
 
-            val first = currentDay.points.firstOrNull()
-            if (first != null) {
-                map.move(
-                    CameraPosition(
-                        Point(first.latitude, first.longitude),
-                        13f,
-                        0f,
-                        0f
+                val coordinates = currentDay.polyline?.coordinates.orEmpty()
+                if (coordinates.size >= 2) {
+                    val polylineObject = objects.addPolyline(
+                        Polyline(coordinates.map { com.yandex.mapkit.geometry.Point(it.latitude, it.longitude) })
                     )
-                )
+                    polylineObject.apply {
+                        strokeWidth = 6f
+                        setStrokeColor(routeStrokeColor())
+                        outlineWidth = 2f
+                        outlineColor = routeOutlineColor()
+                    }
+                }
+
+                val tapListener = MapObjectTapListener { mapObject, _ ->
+                    val userData = mapObject.userData as? Int
+                    if (userData != null) {
+                        onPointClick(userData)
+                        true
+                    } else {
+                        false
+                    }
+                }
+
+                currentDay.points.forEach { point ->
+                    val placemark = addStyledPlacemark(
+                        context = context,
+                        point = point,
+                        selected = point.routePointId == selectedPointId,
+                        createPlacemark = { objects.addPlacemark() }
+                    )
+                    placemark.userData = point.routePointId
+                    placemark.addTapListener(tapListener)
+                }
+
+                val selectedPoint = currentDay.points.firstOrNull { it.routePointId == selectedPointId }
+
+                if (selectedPoint != null) {
+                    focusOnPoint(map, selectedPoint)
+                } else {
+                    fitRouteToBounds(map, currentDay)
+                }
+
+                lastRenderedKey = renderKey
             }
         }
     )
@@ -71,7 +98,7 @@ private fun rememberMapViewWithLifecycle(
     context: Context,
     lifecycleOwner: LifecycleOwner
 ): MapView {
-    val mapView = MapView(context)
+    val mapView = remember { MapView(context) }
 
     DisposableEffect(lifecycleOwner, mapView) {
         val observer = object : DefaultLifecycleObserver {
