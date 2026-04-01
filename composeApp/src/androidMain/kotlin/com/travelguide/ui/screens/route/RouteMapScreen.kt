@@ -3,7 +3,6 @@ package com.travelguide.ui.screens.route
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -11,21 +10,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberBottomSheetScaffoldState
@@ -121,44 +115,15 @@ fun RouteMapScreen(
                             IconButton(onClick = onBackClick) {
                                 Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
                             }
-                        },
-                        actions = {
-                            IconButton(
-                                onClick = {
-                                    scope.launch {
-                                        if (scaffoldState.bottomSheetState.currentValue ==
-                                            androidx.compose.material3.SheetValue.Expanded
-                                        ) {
-                                            scaffoldState.bottomSheetState.partialExpand()
-                                        } else {
-                                            scaffoldState.bottomSheetState.expand()
-                                        }
-                                    }
-                                }
-                            ) {
-                                Icon(Icons.Default.List, contentDescription = "Точки маршрута")
-                            }
                         }
                     )
                 }
             ) { padding ->
-                Box(
+                Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding)
                 ) {
-                    YandexRouteMapView(
-                        day = selectedDay,
-                        selectedPointId = state.selectedPointId,
-                        modifier = Modifier.fillMaxSize(),
-                        onPointClick = { pointId ->
-                            onPointSelected(pointId)
-                            scope.launch {
-                                scaffoldState.bottomSheetState.partialExpand()
-                            }
-                        }
-                    )
-
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -174,14 +139,62 @@ fun RouteMapScreen(
                         )
 
                         if (routeMap.days.size > 1) {
-                            DayDropdownSelector(
+                            DayDropdownButton(
                                 dayNumbers = routeMap.days.map { it.dayNumber },
                                 selectedDayNumber = state.selectedDayNumber,
                                 onDaySelected = onDaySelected
                             )
                         }
                     }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    ) {
+                        YandexRouteMapView(
+                            day = selectedDay,
+                            selectedPointId = state.selectedPointId,
+                            modifier = Modifier.fillMaxSize(),
+                            onPointClick = { pointId ->
+                                onPointSelected(pointId)
+                                scope.launch {
+                                    scaffoldState.bottomSheetState.partialExpand()
+                                }
+                            }
+                        )
+                    }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DayDropdownButton(
+    dayNumbers: List<Int>,
+    selectedDayNumber: Int?,
+    onDaySelected: (Int) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box {
+        Button(onClick = { expanded = true }) {
+            Text(selectedDayNumber?.let { "День $it" } ?: "Выбрать день")
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            dayNumbers.forEach { day ->
+                DropdownMenuItem(
+                    text = { Text("День $day") },
+                    onClick = {
+                        expanded = false
+                        onDaySelected(day)
+                    }
+                )
             }
         }
     }
@@ -220,47 +233,6 @@ private fun RouteSummaryCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun DayDropdownSelector(
-    dayNumbers: List<Int>,
-    selectedDayNumber: Int?,
-    onDaySelected: (Int) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = !expanded }
-    ) {
-        OutlinedTextField(
-            value = selectedDayNumber?.let { "День $it" }.orEmpty(),
-            onValueChange = {},
-            readOnly = true,
-            label = { Text("День маршрута") },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier
-                .menuAnchor()
-                .fillMaxWidth()
-        )
-
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            dayNumbers.forEach { day ->
-                DropdownMenuItem(
-                    text = { Text("День $day") },
-                    onClick = {
-                        expanded = false
-                        onDaySelected(day)
-                    }
-                )
-            }
         }
     }
 }

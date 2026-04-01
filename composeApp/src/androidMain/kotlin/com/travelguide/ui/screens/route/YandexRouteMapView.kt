@@ -40,7 +40,14 @@ fun YandexRouteMapView(
             val objects = map.mapObjects
             val currentDay = day ?: return@AndroidView
 
-            val renderKey = "${currentDay.dayNumber}_${selectedPointId}_${currentDay.points.size}"
+            val pointsKey = currentDay.points.joinToString("|") {
+                "${it.routePointId}:${it.orderIndex}:${it.latitude}:${it.longitude}"
+            }
+            val polylineKey = currentDay.polyline?.coordinates
+                ?.joinToString("|") { "${it.latitude}:${it.longitude}" }
+                .orEmpty()
+
+            val renderKey = "${currentDay.dayNumber}_${selectedPointId}_${pointsKey}_${polylineKey}"
 
             if (lastRenderedKey != renderKey) {
                 objects.clear()
@@ -48,7 +55,11 @@ fun YandexRouteMapView(
                 val coordinates = currentDay.polyline?.coordinates.orEmpty()
                 if (coordinates.size >= 2) {
                     val polylineObject = objects.addPolyline(
-                        Polyline(coordinates.map { com.yandex.mapkit.geometry.Point(it.latitude, it.longitude) })
+                        Polyline(
+                            coordinates.map {
+                                com.yandex.mapkit.geometry.Point(it.latitude, it.longitude)
+                            }
+                        )
                     )
                     polylineObject.apply {
                         strokeWidth = 6f

@@ -42,7 +42,7 @@ class RouteRepository(
         transportMode: TransportMode,
         days: List<EditableRouteDayUi>,
         status: RouteStatus = RouteStatus.READY,
-        autoOptimize: Boolean = true
+        autoOptimize: Boolean = false
     ): Route {
         val requestDays = days
             .filter { it.points.isNotEmpty() }
