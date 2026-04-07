@@ -49,6 +49,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.travelguide.domain.models.Route
+import com.travelguide.domain.models.RouteStatus
 import com.travelguide.domain.models.RouteDay
 import com.travelguide.domain.models.RoutePoint
 
@@ -84,7 +85,7 @@ fun RouteDetailScreen(
                     IconButton(onClick = onEditClick, enabled = route != null) {
                         Icon(Icons.Default.Edit, contentDescription = "Редактировать")
                     }
-                    IconButton(onClick = onViewMap, enabled = route != null) {
+                    IconButton(onClick = onViewMap, enabled = route != null && route.status != RouteStatus.GRAPH_PREPARING) {
                         Icon(Icons.Default.Map, contentDescription = "Карта")
                     }
                     IconButton(onClick = { }, enabled = route != null) {
@@ -102,7 +103,7 @@ fun RouteDetailScreen(
                             .padding(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
                     ) {
-                        FilledTonalButton(onClick = onOptimizeClick) {
+                        FilledTonalButton(onClick = onOptimizeClick, enabled = route.status != RouteStatus.GRAPH_PREPARING) {
                             Icon(Icons.Default.Tune, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Оптимизировать")
@@ -158,6 +159,25 @@ fun RouteDetailScreen(
                             route = route,
                             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)
                         )
+                    }
+
+                    if (route.status == RouteStatus.GRAPH_PREPARING) {
+                        item {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                                )
+                            ) {
+                                Text(
+                                    text = "Маршрут строится, подождите. Мы автоматически импортируем граф дорог и перестроим путь.",
+                                    modifier = Modifier.padding(16.dp),
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                        }
                     }
 
                     item {

@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.travelguide.domain.models.Route
+import com.travelguide.domain.models.RouteStatus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -180,6 +181,15 @@ fun RouteCard(
                 Text(
                     text = route.status.label(),
                     style = MaterialTheme.typography.labelMedium
+                )
+            }
+
+            if (route.status == RouteStatus.GRAPH_PREPARING) {
+                Text(
+                    text = "Маршрут строится, подождите",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 8.dp)
                 )
             }
 
