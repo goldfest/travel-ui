@@ -57,7 +57,10 @@ data class RouteSegmentDto(
     val toRoutePointId: Long,
     val distanceKm: Double,
     val durationMin: Int,
-    val transportMode: String
+    val transportMode: String,
+    val polyline: RoutePolylineDto? = null,
+    val provider: String? = null,
+    val status: String? = null
 )
 
 @Serializable

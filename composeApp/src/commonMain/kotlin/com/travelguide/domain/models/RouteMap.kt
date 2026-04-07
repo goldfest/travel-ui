@@ -1,5 +1,8 @@
 package com.travelguide.domain.models
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class RouteMap(
     val routeId: Int,
     val routeName: String,
@@ -11,6 +14,7 @@ data class RouteMap(
     val days: List<RouteMapDay> = emptyList()
 )
 
+@Serializable
 data class RouteMapDay(
     val routeDayId: Int,
     val dayNumber: Int,
@@ -19,6 +23,7 @@ data class RouteMapDay(
     val segments: List<RouteSegment> = emptyList()
 )
 
+@Serializable
 data class RouteMapPoint(
     val routePointId: Int,
     val poiId: Int,
@@ -32,24 +37,31 @@ data class RouteMapPoint(
     val estimatedVisitMinutes: Int? = null
 )
 
+@Serializable
 data class RoutePolyline(
     val source: String,
     val coordinates: List<LatLng> = emptyList()
 )
 
+@Serializable
 data class LatLng(
     val latitude: Double,
     val longitude: Double
 )
 
+@Serializable
 data class RouteSegment(
     val fromRoutePointId: Int,
     val toRoutePointId: Int,
     val distanceKm: Double,
     val durationMin: Int,
-    val transportMode: String
+    val transportMode: String,
+    val polyline: RoutePolyline? = null,
+    val provider: String? = null,
+    val status: String? = null
 )
 
+@Serializable
 data class MapViewport(
     val minLat: Double? = null,
     val minLng: Double? = null,

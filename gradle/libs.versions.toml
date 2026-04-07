@@ -5,6 +5,7 @@ compose-compiler = "1.5.10"
 compose = "1.6.0"
 coroutines = "1.7.3"
 serialization = "1.6.0"
+ksp = "1.9.22-1.0.17"
 
 #для сети
 ktor = "2.3.12"
@@ -44,3 +45,5 @@ kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref 
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 compose = { id = "org.jetbrains.compose", version.ref = "compose" }
 android-application = { id = "com.android.application", version.ref = "agp" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+

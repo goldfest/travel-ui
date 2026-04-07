@@ -1,5 +1,8 @@
 package com.travelguide.domain.models
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class RoutePoint(
     val id: Int,
     val orderIndex: Int,

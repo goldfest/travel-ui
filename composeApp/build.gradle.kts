@@ -1,11 +1,11 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.compose)
     alias(libs.plugins.android.application)
+    alias(libs.plugins.ksp)
 }
 
 kotlin {
@@ -38,8 +38,6 @@ kotlin {
 
                 implementation(libs.settings)
                 implementation(libs.ktor.client.auth)
-
-
             }
         }
 
@@ -56,28 +54,27 @@ kotlin {
                 implementation(libs.ktor.client.okhttp)
 
                 implementation("io.coil-kt:coil-compose:2.6.0")
-
-                implementation("com.yandex.android:maps.mobile:4.33.1-lite")
-
                 implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.3")
 
+                implementation("org.osmdroid:osmdroid-android:6.1.20")
 
+                implementation("androidx.room:room-runtime:2.6.1")
+                implementation("androidx.room:room-ktx:2.6.1")
+
+                implementation("androidx.work:work-runtime-ktx:2.9.0")
             }
         }
     }
 }
 
+dependencies {
+    add("kspAndroid", "androidx.room:room-compiler:2.6.1")
+}
+
 tasks.withType<KotlinCompile>().configureEach {
     kotlinOptions.freeCompilerArgs += "-Xexpect-actual-classes"
 }
-val localProperties = Properties().apply {
-    val file = rootProject.file("local.properties")
-    if (file.exists()) {
-        file.inputStream().use { load(it) }
-    }
-}
 
-val yandexApiKey = localProperties.getProperty("YANDEX_MAPKIT_API_KEY", "")
 android {
     namespace = "com.travelguide"
     compileSdk = 34
@@ -88,9 +85,6 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
-
-        manifestPlaceholders["YANDEX_MAPKIT_API_KEY"] = yandexApiKey
-        buildConfigField("String", "YANDEX_MAPKIT_API_KEY", "\"$yandexApiKey\"")
     }
 
     compileOptions {

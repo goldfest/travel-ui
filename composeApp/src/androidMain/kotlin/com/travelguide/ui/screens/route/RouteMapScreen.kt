@@ -152,7 +152,7 @@ fun RouteMapScreen(
                             .fillMaxWidth()
                             .weight(1f)
                     ) {
-                        YandexRouteMapView(
+                        OsmRouteMapView(
                             day = selectedDay,
                             selectedPointId = state.selectedPointId,
                             modifier = Modifier.fillMaxSize(),

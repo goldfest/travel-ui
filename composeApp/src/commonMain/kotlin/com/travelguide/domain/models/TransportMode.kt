@@ -1,5 +1,8 @@
 package com.travelguide.domain.models
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 enum class TransportMode {
     WALK,
     PUBLIC_TRANSPORT,

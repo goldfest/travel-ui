@@ -12,10 +12,6 @@
         android:icon="@mipmap/ic_launcher"
         android:label="TravelGuide">
 
-        <meta-data
-            android:name="com.yandex.android.maps.api_key"
-            android:value="${YANDEX_MAPKIT_API_KEY}" />
-
         <activity
             android:name=".MainActivity"
             android:exported="true"

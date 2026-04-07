@@ -1,5 +1,8 @@
 package com.travelguide.domain.models
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class Route(
     val id: Int,
     val name: String,

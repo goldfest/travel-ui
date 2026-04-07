@@ -1,5 +1,8 @@
 package com.travelguide.domain.models
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class POI(
     val id: Int,
     val name: String,
@@ -25,12 +28,13 @@ data class POI(
     }
 }
 
+@Serializable
 data class Feature(
     val key: String,
     val value: String
 )
 
-
+@Serializable
 data class POIType(
     val id: Int,
     val code: String,

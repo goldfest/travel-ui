@@ -51,7 +51,15 @@ fun RouteMapResponseDto.toDomain(): RouteMap =
                         toRoutePointId = seg.toRoutePointId.toInt(),
                         distanceKm = seg.distanceKm,
                         durationMin = seg.durationMin,
-                        transportMode = seg.transportMode
+                        transportMode = seg.transportMode,
+                        polyline = seg.polyline?.let { poly ->
+                            RoutePolyline(
+                                source = poly.source,
+                                coordinates = poly.coordinates.map { LatLng(it.latitude, it.longitude) }
+                            )
+                        },
+                        provider = seg.provider,
+                        status = seg.status
                     )
                 }
             )

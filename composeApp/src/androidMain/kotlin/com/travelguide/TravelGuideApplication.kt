@@ -1,13 +1,11 @@
 package com.travelguide
 
 import android.app.Application
-import com.yandex.mapkit.MapKitFactory
+import org.osmdroid.config.Configuration
 
 class TravelGuideApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-
-        MapKitFactory.setApiKey(BuildConfig.YANDEX_MAPKIT_API_KEY)
-        MapKitFactory.initialize(this)
+        Configuration.getInstance().userAgentValue = packageName
     }
 }

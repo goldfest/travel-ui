@@ -1,5 +1,8 @@
 package com.travelguide.domain.models
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class RouteDay(
     val id: Int,
     val dayNumber: Int,
