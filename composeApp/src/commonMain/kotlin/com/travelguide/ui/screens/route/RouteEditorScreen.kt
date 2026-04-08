@@ -10,23 +10,27 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -45,8 +49,8 @@ import com.travelguide.domain.models.City
 import com.travelguide.domain.models.POI
 import com.travelguide.domain.models.TransportMode
 import com.travelguide.route.EditableRouteDayUi
+import com.travelguide.route.EditableRoutePointUi
 import com.travelguide.route.RouteEditorMode
-import androidx.compose.material3.DropdownMenu
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,6 +59,10 @@ fun RouteEditorScreen(
     availableCities: List<City>,
     selectedCityId: Int?,
     selectedCityName: String,
+    isGraphLoading: Boolean,
+    isGraphReady: Boolean,
+    isGraphDownloadInProgress: Boolean,
+    graphMessage: String?,
     routeName: String,
     routeDescription: String,
     selectedTransport: TransportMode,
@@ -67,6 +75,7 @@ fun RouteEditorScreen(
     errorMessage: String?,
     onBackClick: () -> Unit,
     onCitySelected: (Int) -> Unit,
+    onDownloadGraphClick: () -> Unit,
     onNameChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onTransportChange: (TransportMode) -> Unit,
@@ -81,6 +90,7 @@ fun RouteEditorScreen(
     onSaveClick: () -> Unit
 ) {
     val selectedDay = days.firstOrNull { it.dayNumber == selectedDayNumber }
+    val saveEnabled = !isSaving && (mode == RouteEditorMode.EDIT || isGraphReady)
 
     Scaffold(
         topBar = {
@@ -99,7 +109,7 @@ fun RouteEditorScreen(
                 actions = {
                     TextButton(
                         onClick = onSaveClick,
-                        enabled = !isSaving
+                        enabled = saveEnabled
                     ) {
                         Text(if (isSaving) "Сохранение..." else "Сохранить")
                     }
@@ -152,6 +162,17 @@ fun RouteEditorScreen(
                             Spacer(modifier = Modifier.height(12.dp))
                         }
 
+                        if (mode == RouteEditorMode.CREATE && selectedCityId != null) {
+                            GraphStatusCard(
+                                isGraphLoading = isGraphLoading,
+                                isGraphReady = isGraphReady,
+                                isGraphDownloadInProgress = isGraphDownloadInProgress,
+                                graphMessage = graphMessage,
+                                onDownloadGraphClick = onDownloadGraphClick
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
                         OutlinedTextField(
                             value = routeName,
                             onValueChange = onNameChange,
@@ -181,11 +202,12 @@ fun RouteEditorScreen(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        Row(
+                        LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            contentPadding = PaddingValues(horizontal = 2.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            TransportMode.entries.forEach { modeItem ->
+                            items(TransportMode.entries) { modeItem ->
                                 FilterChip(
                                     selected = selectedTransport == modeItem,
                                     onClick = { onTransportChange(modeItem) },
@@ -238,16 +260,19 @@ fun RouteEditorScreen(
                                 FilterChip(
                                     selected = false,
                                     onClick = onAddDay,
-                                    label = { Text("Добавить") },
-                                    leadingIcon = {
-                                        Icon(Icons.Default.Add, contentDescription = null)
+                                    label = {
+                                        Row {
+                                            Icon(Icons.Default.Add, contentDescription = null)
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("День")
+                                        }
                                     }
                                 )
                             }
                         }
 
                         if (selectedDay != null) {
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -374,6 +399,68 @@ fun RouteEditorScreen(
     }
 }
 
+@Composable
+private fun GraphStatusCard(
+    isGraphLoading: Boolean,
+    isGraphReady: Boolean,
+    isGraphDownloadInProgress: Boolean,
+    graphMessage: String?,
+    onDownloadGraphClick: () -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = if (isGraphReady) {
+                MaterialTheme.colorScheme.secondaryContainer
+            } else {
+                MaterialTheme.colorScheme.tertiaryContainer
+            }
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Граф дорог города",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = graphMessage ?: if (isGraphReady) {
+                    "Граф дорог готов. Можно создавать маршрут."
+                } else {
+                    "Перед созданием маршрута нужно скачать граф города."
+                },
+                color = if (isGraphReady) {
+                    MaterialTheme.colorScheme.onSecondaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onTertiaryContainer
+                }
+            )
+
+            if (isGraphLoading) {
+                Spacer(modifier = Modifier.height(12.dp))
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            FilledTonalButton(
+                onClick = onDownloadGraphClick,
+                enabled = !isGraphReady && !isGraphDownloadInProgress
+            ) {
+                Icon(Icons.Default.Download, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    if (isGraphDownloadInProgress) "Скачивание..."
+                    else if (isGraphReady) "Граф уже скачан"
+                    else "Скачать граф"
+                )
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CitySelectorCard(
@@ -424,7 +511,7 @@ private fun CitySelectorCard(
 private fun EditorRoutePointCard(
     index: Int,
     totalCount: Int,
-    point: com.travelguide.route.EditableRoutePointUi,
+    point: EditableRoutePointUi,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
     onRemove: () -> Unit

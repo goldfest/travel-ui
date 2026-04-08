@@ -6,7 +6,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.travelguide.AppContainer
-import com.travelguide.auth.SimpleViewModelFactory
 import com.travelguide.ui.screens.route.RouteListScreen
 
 @Composable
@@ -33,11 +32,13 @@ fun RouteListRoute(
         routes = state.routes,
         isLoading = state.isLoading,
         showArchived = state.showArchived,
+        deletingRouteId = state.deletingRouteId,
         errorMessage = state.errorMessage,
         onRetry = { vm.loadRoutes() },
         onBackClick = onBackClick,
         onToggleArchived = { vm.toggleArchiveFilter() },
         onRouteClick = onRouteClick,
+        onDeleteRoute = { vm.deleteRoute(it) },
         onCreateRoute = onCreateRoute
     )
 }

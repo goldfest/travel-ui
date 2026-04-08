@@ -49,6 +49,27 @@ class RouteListViewModel(
         loadRoutes(showArchived = !_state.value.showArchived)
     }
 
+    fun deleteRoute(routeId: Int) {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(
+                deletingRouteId = routeId,
+                errorMessage = null
+            )
+
+            runCatching {
+                repository.deleteRoute(routeId)
+            }.onSuccess {
+                _state.value = _state.value.copy(deletingRouteId = null)
+                loadRoutes(_state.value.showArchived)
+            }.onFailure { e ->
+                _state.value = _state.value.copy(
+                    deletingRouteId = null,
+                    errorMessage = e.message ?: "Не удалось удалить маршрут"
+                )
+            }
+        }
+    }
+
     private fun scheduleRefreshIfNeeded(showArchived: Boolean, routes: List<com.travelguide.domain.models.Route>) {
         refreshJob?.cancel()
         if (showArchived || routes.none { it.status == com.travelguide.domain.models.RouteStatus.GRAPH_PREPARING }) {

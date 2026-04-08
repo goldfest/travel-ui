@@ -16,6 +16,7 @@ import com.travelguide.network.dto.route.CreateRoutePointRequestDto
 import com.travelguide.network.dto.route.CreateRouteRequestDto
 import com.travelguide.network.dto.route.GenerateRouteRequestDto
 import com.travelguide.network.dto.route.RouteDayResponseDto
+import com.travelguide.network.dto.route.RouteMapResponseDto
 import com.travelguide.network.dto.route.RoutePointResponseDto
 import com.travelguide.network.dto.route.RouteResponseDto
 import com.travelguide.network.dto.route.UpdateRouteRequestDto
@@ -39,6 +40,48 @@ class RouteRepository(
     private val localStore: RouteLocalStore? = null,
     private val json: Json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 ) {
+
+    suspend fun isCityGraphReady(cityId: Int): Boolean {
+        return api.getCityGraphStatus(cityId.toLong()).ready
+    }
+
+    suspend fun requestCityGraphDownload(cityId: Int): Boolean {
+        return api.requestCityGraphDownload(cityId.toLong()).ready
+    }
+
+    suspend fun downloadOfflineRoute(routeId: Int): ByteArray {
+        return api.downloadOfflineRoute(routeId.toLong())
+    }
+
+    suspend fun exportRoutePdf(routeId: Int): ByteArray {
+        return api.exportRoutePdf(routeId.toLong())
+    }
+
+    suspend fun exportRouteGpx(routeId: Int): ByteArray {
+        return api.exportRouteGpx(routeId.toLong())
+    }
+
+    suspend fun exportRouteJson(routeId: Int): ByteArray {
+        return api.exportRouteJson(routeId.toLong())
+    }
+
+    suspend fun deleteRoute(routeId: Int) {
+        runCatching {
+            if (routeId > 0) {
+                api.deleteRoute(routeId.toLong())
+            }
+            localStore?.deleteRoute(routeId)
+            localStore?.deleteRouteMap(routeId)
+        }.getOrElse { error ->
+            if (routeId < 0) {
+                localStore?.deleteRoute(routeId)
+                localStore?.deleteRouteMap(routeId)
+            } else {
+                throw error
+            }
+        }
+    }
+
     private var nextLocalRouteId = -1
     private var nextLocalDayId = -1
     private var nextLocalPointId = -1
@@ -353,9 +396,11 @@ class RouteRepository(
     }
 
     suspend fun getRouteMap(routeId: Int): RouteMap {
-        return runCatching {
-            api.getRouteMap(routeId.toLong()).toDomain().also { localStore?.saveRouteMap(it) }
-        }.getOrElse { error ->
+        return try {
+            val routeMap = api.getRouteMap(routeId.toLong()).toDomain()
+            localStore?.saveRouteMap(routeMap)
+            routeMap
+        } catch (error: Throwable) {
             localStore?.getRouteMap(routeId)
                 ?: localStore?.getRoute(routeId)?.toFallbackMap()
                 ?: throw error

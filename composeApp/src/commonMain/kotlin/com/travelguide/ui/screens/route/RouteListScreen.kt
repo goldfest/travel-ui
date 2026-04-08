@@ -1,5 +1,7 @@
 package com.travelguide.ui.screens.route
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,7 +15,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Route
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -23,9 +28,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.Button
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -39,13 +45,41 @@ fun RouteListScreen(
     routes: List<Route>,
     isLoading: Boolean,
     showArchived: Boolean,
+    deletingRouteId: Int?,
     errorMessage: String?,
     onRetry: () -> Unit,
     onBackClick: () -> Unit,
     onToggleArchived: () -> Unit,
     onRouteClick: (Int) -> Unit,
+    onDeleteRoute: (Int) -> Unit,
     onCreateRoute: (() -> Unit)? = null
 ) {
+    var pendingDeleteRoute by remember { mutableStateOf<Route?>(null) }
+
+    pendingDeleteRoute?.let { route ->
+        AlertDialog(
+            onDismissRequest = { pendingDeleteRoute = null },
+            title = { Text("Удалить маршрут?") },
+            text = { Text("Маршрут «${route.name}» будет удалён без возможности восстановления.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingDeleteRoute = null
+                        onDeleteRoute(route.id)
+                    },
+                    enabled = deletingRouteId == null
+                ) {
+                    Text("Удалить")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteRoute = null }) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -138,10 +172,12 @@ fun RouteListScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(routes) { route ->
+                    items(routes, key = { it.id }) { route ->
                         RouteCard(
                             route = route,
-                            onClick = { onRouteClick(route.id) }
+                            isDeleting = deletingRouteId == route.id,
+                            onClick = { onRouteClick(route.id) },
+                            onLongClick = { pendingDeleteRoute = route }
                         )
                     }
                 }
@@ -150,14 +186,21 @@ fun RouteListScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun RouteCard(
     route: Route,
-    onClick: () -> Unit
+    isDeleting: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
 ) {
     Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -204,6 +247,38 @@ fun RouteCard(
                 text = "Точек: ${route.points.size}",
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(top = 4.dp)
+            )
+
+            if (isDeleting) {
+                Text(
+                    text = "Удаление...",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            } else {
+                RowDeleteHint()
+            }
+        }
+    }
+}
+
+@Composable
+private fun RowDeleteHint() {
+    Surface(
+        modifier = Modifier.padding(top = 8.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = MaterialTheme.shapes.medium
+    ) {
+        androidx.compose.foundation.layout.Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Delete, contentDescription = null)
+            Text(
+                text = "Удерживайте для удаления",
+                style = MaterialTheme.typography.labelSmall
             )
         }
     }

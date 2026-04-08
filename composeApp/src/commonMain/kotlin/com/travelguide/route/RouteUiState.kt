@@ -8,6 +8,7 @@ data class RouteListUiState(
     val isLoading: Boolean = false,
     val routes: List<Route> = emptyList(),
     val showArchived: Boolean = false,
+    val deletingRouteId: Int? = null,
     val errorMessage: String? = null
 )
 

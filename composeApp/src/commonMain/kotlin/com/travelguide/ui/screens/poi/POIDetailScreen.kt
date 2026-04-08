@@ -119,7 +119,7 @@ fun POIDetailScreen(
                         ) {
                             Icon(Icons.Default.Route, contentDescription = null, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("В маршрут")
+                            Text("")
                         }
 
                         Button(
@@ -131,7 +131,7 @@ fun POIDetailScreen(
                         ) {
                             Icon(Icons.Default.BookmarkAdd, contentDescription = null, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("В коллекцию")
+                            Text("")
                         }
 
                         Button(

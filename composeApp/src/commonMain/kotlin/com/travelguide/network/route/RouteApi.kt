@@ -1,6 +1,7 @@
 package com.travelguide.network.route
 
 import com.travelguide.network.dto.common.PageResponseDto
+import com.travelguide.network.dto.route.CityGraphStatusResponseDto
 import com.travelguide.network.dto.route.CreateRouteRequestDto
 import com.travelguide.network.dto.route.GenerateRouteRequestDto
 import com.travelguide.network.dto.route.ReorderRouteDayPointsRequestDto
@@ -58,6 +59,10 @@ class RouteApi(
 
     suspend fun getRouteById(routeId: Long): RouteResponseDto {
         return client.get("$routesUrl/$routeId").body()
+    }
+
+    suspend fun deleteRoute(routeId: Long) {
+        client.delete("$routesUrl/$routeId")
     }
 
     suspend fun createRoute(request: CreateRouteRequestDto): RouteResponseDto {
@@ -128,5 +133,30 @@ class RouteApi(
 
     suspend fun getRouteMap(routeId: Long): RouteMapResponseDto {
         return client.get("$routesUrl/$routeId/map").body()
+    }
+
+
+    suspend fun getCityGraphStatus(cityId: Long): CityGraphStatusResponseDto {
+        return client.get("$baseUrl/v1/graphs/cities/$cityId/status").body()
+    }
+
+    suspend fun requestCityGraphDownload(cityId: Long): CityGraphStatusResponseDto {
+        return client.post("$baseUrl/v1/graphs/cities/$cityId/download").body()
+    }
+
+    suspend fun downloadOfflineRoute(routeId: Long): ByteArray {
+        return client.post("$baseUrl/v1/offline/routes/$routeId/download").body()
+    }
+
+    suspend fun exportRoutePdf(routeId: Long): ByteArray {
+        return client.get("$baseUrl/v1/export/routes/$routeId/pdf").body()
+    }
+
+    suspend fun exportRouteGpx(routeId: Long): ByteArray {
+        return client.get("$baseUrl/v1/export/routes/$routeId/gpx").body()
+    }
+
+    suspend fun exportRouteJson(routeId: Long): ByteArray {
+        return client.get("$baseUrl/v1/export/routes/$routeId/json").body()
     }
 }

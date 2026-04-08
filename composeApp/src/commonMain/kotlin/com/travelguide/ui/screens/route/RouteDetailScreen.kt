@@ -21,15 +21,17 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -42,6 +44,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,9 +55,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.travelguide.domain.models.Route
-import com.travelguide.domain.models.RouteStatus
 import com.travelguide.domain.models.RouteDay
 import com.travelguide.domain.models.RoutePoint
+import com.travelguide.domain.models.RouteStatus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,8 +70,14 @@ fun RouteDetailScreen(
     onEditClick: () -> Unit,
     onViewMap: () -> Unit,
     onViewList: () -> Unit,
-    onOptimizeClick: () -> Unit
+    onOptimizeClick: () -> Unit,
+    onDownloadOfflineClick: () -> Unit,
+    onExportPdfClick: () -> Unit,
+    onExportGpxClick: () -> Unit,
+    onExportJsonClick: () -> Unit
 ) {
+    var exportMenuExpanded by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -88,9 +100,6 @@ fun RouteDetailScreen(
                     IconButton(onClick = onViewMap, enabled = route != null && route.status != RouteStatus.GRAPH_PREPARING) {
                         Icon(Icons.Default.Map, contentDescription = "Карта")
                     }
-                    IconButton(onClick = { }, enabled = route != null) {
-                        Icon(Icons.Default.Share, contentDescription = "Поделиться")
-                    }
                 }
             )
         },
@@ -103,16 +112,59 @@ fun RouteDetailScreen(
                             .padding(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
                     ) {
-                        FilledTonalButton(onClick = onOptimizeClick, enabled = route.status != RouteStatus.GRAPH_PREPARING) {
+                        FilledTonalButton(
+                            onClick = onOptimizeClick,
+                            enabled = route.status != RouteStatus.GRAPH_PREPARING
+                        ) {
                             Icon(Icons.Default.Tune, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Оптимизировать")
                         }
 
-                        FilledTonalButton(onClick = { }) {
+                        FilledTonalButton(
+                            onClick = onDownloadOfflineClick,
+                            enabled = route.status != RouteStatus.GRAPH_PREPARING
+                        ) {
                             Icon(Icons.Default.Download, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Экспорт")
+                            Text("Оффлайн")
+                        }
+
+                        Box {
+                            FilledTonalButton(
+                                onClick = { exportMenuExpanded = true },
+                                enabled = route.status != RouteStatus.GRAPH_PREPARING
+                            ) {
+                                Icon(Icons.Default.Share, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Экспорт")
+                            }
+                            DropdownMenu(
+                                expanded = exportMenuExpanded,
+                                onDismissRequest = { exportMenuExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("PDF") },
+                                    onClick = {
+                                        exportMenuExpanded = false
+                                        onExportPdfClick()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("GPX") },
+                                    onClick = {
+                                        exportMenuExpanded = false
+                                        onExportGpxClick()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("JSON") },
+                                    onClick = {
+                                        exportMenuExpanded = false
+                                        onExportJsonClick()
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -172,7 +224,7 @@ fun RouteDetailScreen(
                                 )
                             ) {
                                 Text(
-                                    text = "Маршрут строится, подождите. Мы автоматически импортируем граф дорог и перестроим путь.",
+                                    text = "Маршрут ещё готовится. Обновление страницы теперь выполняется только вручную — нажмите «Повторить» или вернитесь позже.",
                                     modifier = Modifier.padding(16.dp),
                                     color = MaterialTheme.colorScheme.onSecondaryContainer
                                 )

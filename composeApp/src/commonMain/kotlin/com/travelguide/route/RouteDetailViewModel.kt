@@ -2,8 +2,6 @@ package com.travelguide.route
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,8 +10,6 @@ import kotlinx.coroutines.launch
 class RouteDetailViewModel(
     private val repository: RouteRepository
 ) : ViewModel() {
-
-    private var refreshJob: Job? = null
 
     private val _state = MutableStateFlow(RouteDetailUiState())
     val state: StateFlow<RouteDetailUiState> = _state.asStateFlow()
@@ -30,9 +26,7 @@ class RouteDetailViewModel(
                     route = route,
                     errorMessage = null
                 )
-                scheduleRefreshIfNeeded(routeId, route.status == com.travelguide.domain.models.RouteStatus.GRAPH_PREPARING)
             }.onFailure { e ->
-                refreshJob?.cancel()
                 _state.value = RouteDetailUiState(
                     isLoading = false,
                     route = null,
@@ -75,17 +69,6 @@ class RouteDetailViewModel(
                     errorMessage = e.message ?: "Не удалось изменить порядок точек"
                 )
             }
-        }
-    }
-
-
-    private fun scheduleRefreshIfNeeded(routeId: Int, shouldRefresh: Boolean) {
-        refreshJob?.cancel()
-        if (!shouldRefresh) return
-
-        refreshJob = viewModelScope.launch {
-            delay(4000)
-            loadRoute(routeId)
         }
     }
 }

@@ -32,6 +32,10 @@ data class RouteEditorUiState(
     val availableCities: List<City> = emptyList(),
     val selectedCityId: Int? = null,
     val selectedCityName: String = "",
+    val isGraphLoading: Boolean = false,
+    val isGraphReady: Boolean = false,
+    val isGraphDownloadInProgress: Boolean = false,
+    val graphMessage: String? = null,
 
     val routeName: String = "",
     val routeDescription: String = "",

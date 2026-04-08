@@ -6,7 +6,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.travelguide.AppContainer
-import com.travelguide.auth.SimpleViewModelFactory
 import com.travelguide.ui.screens.route.RouteEditorScreen
 
 @Composable
@@ -47,6 +46,10 @@ fun RouteEditorRoute(
         availableCities = state.availableCities,
         selectedCityId = state.selectedCityId,
         selectedCityName = state.selectedCityName,
+        isGraphLoading = state.isGraphLoading,
+        isGraphReady = state.isGraphReady,
+        isGraphDownloadInProgress = state.isGraphDownloadInProgress,
+        graphMessage = state.graphMessage,
         routeName = state.routeName,
         routeDescription = state.routeDescription,
         selectedTransport = state.selectedTransport,
@@ -59,6 +62,7 @@ fun RouteEditorRoute(
         errorMessage = state.errorMessage,
         onBackClick = onBackClick,
         onCitySelected = vm::onCitySelected,
+        onDownloadGraphClick = vm::downloadGraphForSelectedCity,
         onNameChange = vm::onNameChange,
         onDescriptionChange = vm::onDescriptionChange,
         onTransportChange = vm::onTransportChange,

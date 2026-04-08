@@ -7,6 +7,7 @@ import com.travelguide.domain.models.City
 import com.travelguide.domain.models.POI
 import com.travelguide.domain.models.Route
 import com.travelguide.domain.models.TransportMode
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,6 +47,8 @@ class RouteEditorViewModel(
                     filteredPois = filterPois(pois, _state.value.searchQuery),
                     errorMessage = null
                 )
+
+                selectedCity?.id?.let { refreshGraphState(it) }
 
                 if (initialPoiId != null) {
                     preselectPoiIfNeeded(initialPoiId)
@@ -110,6 +113,8 @@ class RouteEditorViewModel(
                     filteredPois = filterPois(data.pois, _state.value.searchQuery),
                     days = mappedDays,
                     selectedDayNumber = mappedDays.first().dayNumber,
+                    isGraphReady = true,
+                    isGraphLoading = false,
                     errorMessage = null
                 )
             }.onFailure { e ->
@@ -162,14 +167,88 @@ class RouteEditorViewModel(
                     filteredPois = filterPois(pois, _state.value.searchQuery),
                     days = listOf(EditableRouteDayUi(dayNumber = 1)),
                     selectedDayNumber = 1,
+                    isGraphReady = false,
+                    isGraphLoading = true,
+                    isGraphDownloadInProgress = false,
+                    graphMessage = null,
                     errorMessage = null
                 )
+                refreshGraphState(city.id)
             }.onFailure { e ->
                 _state.value = _state.value.copy(
                     isLoading = false,
                     errorMessage = e.message ?: "Не удалось выбрать город"
                 )
             }
+        }
+    }
+
+
+    fun downloadGraphForSelectedCity() {
+        val cityId = _state.value.selectedCityId ?: return
+        if (_state.value.mode == RouteEditorMode.EDIT) return
+
+        viewModelScope.launch {
+            _state.value = _state.value.copy(
+                isGraphDownloadInProgress = true,
+                isGraphLoading = true,
+                graphMessage = "Подготавливаем граф города…",
+                errorMessage = null
+            )
+
+            runCatching {
+                routeRepository.requestCityGraphDownload(cityId)
+                repeat(30) {
+                    if (routeRepository.isCityGraphReady(cityId)) {
+                        return@runCatching true
+                    }
+                    delay(2000)
+                }
+                false
+            }.onSuccess { ready ->
+                _state.value = _state.value.copy(
+                    isGraphDownloadInProgress = false,
+                    isGraphLoading = false,
+                    isGraphReady = ready,
+                    graphMessage = if (ready) {
+                        "Граф дорог готов. Можно создавать маршрут."
+                    } else {
+                        "Граф ещё готовится. Нажмите кнопку позже, чтобы обновить статус."
+                    }
+                )
+            }.onFailure { e ->
+                _state.value = _state.value.copy(
+                    isGraphDownloadInProgress = false,
+                    isGraphLoading = false,
+                    errorMessage = e.message ?: "Не удалось скачать граф города"
+                )
+            }
+        }
+    }
+
+    private fun refreshGraphState(cityId: Int) {
+        if (_state.value.mode == RouteEditorMode.EDIT) return
+        viewModelScope.launch {
+            _state.value = _state.value.copy(isGraphLoading = true, graphMessage = null)
+            runCatching { routeRepository.isCityGraphReady(cityId) }
+                .onSuccess { ready ->
+                    _state.value = _state.value.copy(
+                        isGraphLoading = false,
+                        isGraphReady = ready,
+                        graphMessage = if (ready) {
+                            "Граф дорог уже скачан."
+                        } else {
+                            "Перед созданием маршрута нужно скачать граф города."
+                        }
+                    )
+                }
+                .onFailure {
+                    _state.value = _state.value.copy(
+                        isGraphLoading = false,
+                        isGraphReady = false,
+                        graphMessage = "Не удалось проверить граф. Для создания маршрута потребуется повторная проверка."
+                    )
+                }
         }
     }
 
@@ -282,6 +361,11 @@ class RouteEditorViewModel(
         val cityId = current.selectedCityId
         if (cityId == null) {
             _state.value = current.copy(errorMessage = "Выберите город")
+            return
+        }
+
+        if (current.mode == RouteEditorMode.CREATE && !current.isGraphReady) {
+            _state.value = current.copy(errorMessage = "Сначала скачайте граф выбранного города")
             return
         }
 
