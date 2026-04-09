@@ -1,7 +1,15 @@
 package com.travelguide.network.dto.route
 
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+
+@Serializable
+data class RoutePageResponseDto(
+    val content: List<RouteResponseDto> = emptyList(),
+    val totalPages: Int = 0,
+    val totalElements: Long = 0,
+    val size: Int = 0,
+    val number: Int = 0
+)
 
 @Serializable
 data class RouteResponseDto(
@@ -32,6 +40,7 @@ data class RouteDayResponseDto(
     val dayNumber: Int,
     val description: String? = null,
     val routeId: Long,
+    val routeDate: String? = null,
     val plannedStart: String? = null,
     val plannedEnd: String? = null,
     val points: List<RoutePointResponseDto> = emptyList()
@@ -58,58 +67,100 @@ data class CreateRouteRequestDto(
     val description: String? = null,
     val cityId: Long,
     val transportMode: String,
-    val startDate: String? = null,
-    val status: String = "READY",
+    val status: String? = null,
     val autoOptimize: Boolean = false,
     val optimizationMode: String? = null,
-    val days: List<CreateRouteDayRequestDto>
+    val days: List<CreateRouteDayRequestDto> = emptyList()
 )
 
 @Serializable
 data class CreateRouteDayRequestDto(
     val dayNumber: Int,
     val description: String? = null,
-    val plannedStart: String? = null,
-    val plannedEnd: String? = null,
-    val points: List<CreateRoutePointRequestDto>
+    val points: List<CreateRoutePointRequestDto> = emptyList()
 )
 
 @Serializable
 data class CreateRoutePointRequestDto(
     val poiId: Long,
     val orderIndex: Int,
-    val estimatedVisitMinutes: Int = 60,
-    val plannedArrival: String? = null,
-    val plannedDeparture: String? = null
+    val estimatedVisitMinutes: Int? = null
 )
 
 @Serializable
 data class ReorderRouteDayPointsRequestDto(
-    @SerialName("routePointIdsInOrder")
     val routePointIdsInOrder: List<Long>
-)
-
-
-@Serializable
-data class RouteOptimizationRequestDto(
-    val optimizationMode: String = "TIME_WINDOW",
-    val dayStartTime: String? = null,
-    val dayEndTime: String? = null,
-    val maxTotalMinutesPerDay: Int? = null,
-    val maxPointsPerDay: Int? = null,
-    val maxTravelMinutesBetweenPoints: Int? = null,
-    val allowDroppingPoints: Boolean = true,
-    val keepFirstAndLast: Boolean = true,
-    val orderedRoutePointIds: List<Long> = emptyList(),
-    val considerOpeningHours: Boolean = false,
-    val considerLunchBreak: Boolean = false
 )
 
 @Serializable
 data class GenerateRouteRequestDto(
     val cityId: Long,
-    val daysCount: Int = 1,
     val interests: List<String> = emptyList(),
+    val daysCount: Int = 1,
     val transportMode: String = "WALK",
     val optimize: Boolean = true
+)
+
+@Serializable
+data class RouteOptimizationDayRequestDto(
+    val routeDayId: Long,
+    val routeDate: String? = null,
+    val dayStartTime: String? = null,
+    val dayEndTime: String? = null
+)
+
+@Serializable
+data class RouteOptimizationRequestDto(
+    val optimizationMode: String = "TIME_WINDOW",
+    val daySettings: List<RouteOptimizationDayRequestDto> = emptyList(),
+    val visitMinutesByRoutePointId: Map<Long, Int> = emptyMap()
+)
+
+@Serializable
+data class RouteMapDayResponseDto(
+    val routeDayId: Long,
+    val dayNumber: Int,
+    val polyline: RoutePolylineResponseDto? = null,
+    val points: List<RouteMapPointResponseDto> = emptyList(),
+    val segments: List<RouteSegmentResponseDto> = emptyList()
+)
+
+@Serializable
+data class RoutePolylineResponseDto(
+    val source: String? = null,
+    val coordinates: List<LatLngDto> = emptyList()
+)
+
+@Serializable
+data class RouteMapPointResponseDto(
+    val routePointId: Long,
+    val poiId: Long,
+    val orderIndex: Int,
+    val poiName: String? = null,
+    val poiAddress: String? = null,
+    val poiType: String? = null,
+    val latitude: Double,
+    val longitude: Double,
+    val markerType: String? = null,
+    val estimatedVisitMinutes: Int? = null
+)
+
+@Serializable
+data class RouteSegmentResponseDto(
+    val fromRoutePointId: Long,
+    val toRoutePointId: Long,
+    val distanceKm: Double? = null,
+    val durationMin: Int? = null,
+    val transportMode: String? = null,
+    val provider: String? = null,
+    val status: String? = null,
+    val polyline: RoutePolylineResponseDto? = null
+)
+
+@Serializable
+data class CityGraphStatusDto(
+    val cityId: Long? = null,
+    val ready: Boolean = false,
+    val activeVersionId: Long? = null,
+    val status: String? = null
 )

@@ -53,7 +53,7 @@ fun RouteDetailRoute(
         onEditClick = onEditClick,
         onViewMap = onViewMap,
         onViewList = onViewList,
-        onOptimizeClick = { form -> vm.optimize(routeId, form) },
+        onOptimizeClick = { request -> vm.optimize(routeId, request) },
         onDownloadOfflineClick = {
             scope.launch {
                 runCatching {

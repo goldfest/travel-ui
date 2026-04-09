@@ -195,7 +195,7 @@ class RouteRepository(
             transportMode = transportMode.name,
             status = status.name,
             autoOptimize = autoOptimize,
-            optimizationMode = if (autoOptimize) "distance" else null,
+            optimizationMode = if (autoOptimize) "TIME_WINDOW" else null,
             days = requestDays
         )
 
@@ -231,7 +231,7 @@ class RouteRepository(
                             transportMode = transportMode,
                             status = status,
                             autoOptimize = autoOptimize,
-                            optimizationMode = if (autoOptimize) "distance" else null,
+                            optimizationMode = if (autoOptimize) "TIME_WINDOW" else null,
                             days = days
                         )
                     )
@@ -389,10 +389,35 @@ class RouteRepository(
             }
         }.getOrElse { error ->
             val store = localStore ?: throw error
-            val updated = (store.getRoute(routeId) ?: throw error).copy(
+            val existing = store.getRoute(routeId) ?: throw error
+            val daySettingsById = request.daySettings.associateBy { it.routeDayId.toInt() }
+
+            val updatedDays = existing.days.map { day ->
+                val settings = daySettingsById[day.id]
+                val date = settings?.routeDate?.takeIf { !it.isNullOrBlank() } ?: day.routeDate
+                val start = settings?.dayStartTime?.takeIf { !it.isNullOrBlank() }
+                val end = settings?.dayEndTime?.takeIf { !it.isNullOrBlank() }
+
+                day.copy(
+                    routeDate = date,
+                    plannedStart = mergeDateAndTime(date, start) ?: day.plannedStart,
+                    plannedEnd = mergeDateAndTime(date, end) ?: day.plannedEnd,
+                    points = day.points.map { point ->
+                        point.copy(
+                            estimatedVisitMinutes = request.visitMinutesByRoutePointId[point.id.toLong()]
+                                ?: point.estimatedVisitMinutes
+                        )
+                    }
+                )
+            }
+
+            val updated = existing.copy(
                 isOptimized = true,
-                optimizationMode = request.optimizationMode
+                optimizationMode = request.optimizationMode,
+                days = updatedDays,
+                points = updatedDays.flatMap { it.points }
             )
+
             saveOfflineMutation(
                 updatedRoute = updated,
                 operation = PendingRouteSyncOperation(
@@ -498,6 +523,9 @@ class RouteRepository(
                     dayNumber = day.dayNumber,
                     description = day.description.takeIf { it.isNotBlank() },
                     routeId = routeId,
+                    routeDate = null,
+                    plannedStart = null,
+                    plannedEnd = null,
                     points = day.points.mapIndexed { index, point ->
                         RoutePoint(
                             id = nextLocalPointId--,
@@ -517,7 +545,7 @@ class RouteRepository(
             transportMode = transportMode,
             status = status,
             isOptimized = autoOptimize,
-            optimizationMode = if (autoOptimize) "distance" else null,
+            optimizationMode = if (autoOptimize) "TIME_WINDOW" else null,
             userId = 0,
             cityId = cityId,
             points = routeDays.flatMap { it.points },
@@ -557,6 +585,7 @@ private fun RouteDayResponseDto.toDomain(): RouteDay =
         dayNumber = dayNumber,
         description = description,
         routeId = routeId.toInt(),
+        routeDate = routeDate,
         plannedStart = plannedStart,
         plannedEnd = plannedEnd,
         points = points.map { it.toDomain() }
@@ -673,7 +702,6 @@ private fun Route.reorderDay(dayId: Int, orderedPointIds: List<Int>): Route {
     return copy(days = updatedDays, points = updatedDays.flatMap { it.points })
 }
 
-
 private fun RouteMap.toOfflineGraphJson(json: Json): String {
     val snapshot = RouteOfflineGraphSnapshot(
         routeId = routeId,
@@ -698,4 +726,10 @@ private fun RouteMap.toOfflineGraphJson(json: Json): String {
         }
     )
     return json.encodeToString(snapshot)
+}
+
+private fun mergeDateAndTime(date: String?, time: String?): String? {
+    val safeDate = date?.takeIf { it.isNotBlank() } ?: return null
+    val safeTime = time?.takeIf { it.isNotBlank() } ?: return null
+    return "${safeDate}T${safeTime}:00"
 }

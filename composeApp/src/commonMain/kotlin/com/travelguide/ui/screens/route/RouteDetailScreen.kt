@@ -563,6 +563,14 @@ fun DayOverviewCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    formatDayDate(day)?.let { formattedDate ->
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = formattedDate,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
                 Surface(
@@ -646,6 +654,13 @@ private fun DayPointRow(point: RoutePoint) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            formatPointVisitRange(point)?.let { visitRange ->
+                Text(
+                    text = "Время: $visitRange",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
@@ -681,6 +696,13 @@ fun RoutePointItem(
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Посещение: $it мин",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            formatPointVisitRange(point)?.let { visitRange ->
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Время: $visitRange",
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -728,4 +750,27 @@ private fun pluralPoints(count: Int): String {
         mod10 in 2..4 && mod100 !in 12..14 -> "точки"
         else -> "точек"
     }
+}
+
+private fun formatIsoDate(value: String?): String? {
+    if (value.isNullOrBlank()) return null
+    val datePart = value.substringBefore('T')
+    val parts = datePart.split("-")
+    if (parts.size != 3) return datePart
+    return "${parts[2]}.${parts[1]}.${parts[0]}"
+}
+
+private fun formatIsoTime(value: String?): String? {
+    if (value.isNullOrBlank()) return null
+    return value.substringAfter('T', value).take(5)
+}
+
+private fun formatPointVisitRange(point: RoutePoint): String? {
+    val start = formatIsoTime(point.plannedArrivalAt)
+    val end = formatIsoTime(point.plannedDepartureAt)
+    return if (!start.isNullOrBlank() && !end.isNullOrBlank()) "$start — $end" else null
+}
+
+private fun formatDayDate(day: RouteDay): String? {
+    return formatIsoDate(day.routeDate ?: day.plannedStart ?: day.plannedEnd)
 }

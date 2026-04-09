@@ -38,6 +38,8 @@ kotlin {
 
                 implementation(libs.settings)
                 implementation(libs.ktor.client.auth)
+
+                implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
             }
         }
 

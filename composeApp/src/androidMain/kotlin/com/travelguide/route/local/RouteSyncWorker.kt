@@ -19,7 +19,6 @@ import com.travelguide.network.dto.route.CreateRouteDayRequestDto
 import com.travelguide.network.dto.route.CreateRoutePointRequestDto
 import com.travelguide.network.dto.route.CreateRouteRequestDto
 import com.travelguide.network.dto.route.RouteDayResponseDto
-import com.travelguide.network.dto.route.RouteOptimizationRequestDto
 import com.travelguide.network.dto.route.RoutePointResponseDto
 import com.travelguide.network.dto.route.RouteResponseDto
 import com.travelguide.network.dto.route.UpdateRouteRequestDto
@@ -168,12 +167,7 @@ class RouteSyncWorker(
 
     private suspend fun syncOptimize(op: RouteSyncQueueEntity) {
         val payload = json.decodeFromString(OptimizeRouteSyncPayload.serializer(), op.payloadJson)
-
-        val response = routeApi.optimizeRoute(
-            payload.routeId.toLong(),
-            payload.request
-        ).toDomain()
-
+        val response = routeApi.optimizeRoute(payload.routeId.toLong(), payload.request).toDomain()
         store.saveRoute(response)
         store.saveRouteMap(fetchFreshMap(response))
     }
