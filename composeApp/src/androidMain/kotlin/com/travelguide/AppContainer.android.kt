@@ -10,6 +10,7 @@ import com.travelguide.favorite.FavoriteRepository
 import com.travelguide.network.HttpClientFactory
 import com.travelguide.network.auth.AuthApi
 import com.travelguide.network.city.CityApi
+import com.travelguide.network.notification.NotificationApi
 import com.travelguide.network.personalization.CollectionApi
 import com.travelguide.network.personalization.FavoriteApi
 import com.travelguide.network.personalization.SearchHistoryApi
@@ -18,6 +19,8 @@ import com.travelguide.network.review.ReportApi
 import com.travelguide.network.review.ReviewApi
 import com.travelguide.network.route.RouteApi
 import com.travelguide.network.user.UserApi
+import com.travelguide.notification.NotificationPollScheduler
+import com.travelguide.notification.NotificationRepository
 import com.travelguide.personalisation.CollectionRepository
 import com.travelguide.poi.PoiRepository
 import com.travelguide.profile.UserCache
@@ -47,6 +50,7 @@ class AppContainer(context: Context) {
     private val reviewBaseUrl = "http://192.168.1.9:8083/api/reviews"
     private val personalizationBaseUrl = "http://192.168.1.9:8085/api/personalization"
     private val routeBaseUrl = "http://192.168.1.9:8087/api/routes"
+    private val notificationBaseUrl = "http://192.168.1.9:8086/api/notifications"
 
     val tokenStorage = TokenStorage(settings)
     private val httpClient = HttpClientFactory().create(authApiBaseUrl, tokenStorage)
@@ -81,12 +85,17 @@ class AppContainer(context: Context) {
     private val routeDb = RouteAppDatabase.getInstance(context)
     private val routeLocalStore = RouteLocalStoreImpl(routeDb.routeCacheDao())
     private val routeSyncScheduler = RouteSyncScheduler(context)
+    private val notificationPollScheduler = NotificationPollScheduler(context)
 
     private val routeApi = RouteApi(httpClient, routeBaseUrl)
     val routeRepository = RouteRepository(routeApi, poiRepository, routeLocalStore)
 
+    private val notificationApi = NotificationApi(httpClient, notificationBaseUrl)
+    val notificationRepository = NotificationRepository(notificationApi)
+
     init {
         routeSyncScheduler.ensurePeriodicSync()
         routeSyncScheduler.scheduleNow()
+        notificationPollScheduler.ensurePeriodicPolling()
     }
 }

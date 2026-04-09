@@ -11,6 +11,7 @@ import com.travelguide.auth.RegisterRoute
 import com.travelguide.city.CityInfoRoute
 import com.travelguide.city.CityListRoute
 import com.travelguide.favorite.FavoritesRoute
+import com.travelguide.notification.NotificationsRoute
 import com.travelguide.personalisation.CollectionEditRoute
 import com.travelguide.personalisation.CollectionsRoute
 import com.travelguide.poi.POIListRoute
@@ -80,8 +81,18 @@ fun AppNavHost(
                 container = container,
                 onCityClick = { cityId -> navController.navigate("cityinfo/$cityId") },
                 onProfileClick = { navController.navigate("profile") },
-                onNotificationsClick = { },
+                onNotificationsClick = { navController.navigate("notifications") },
                 onSearchClick = { navController.navigate("search") }
+            )
+        }
+
+        composable("notifications") {
+            NotificationsRoute(
+                container = container,
+                onBackClick = { navController.popBackStack() },
+                onOpenRoute = { routeId ->
+                    navController.navigate("routeDetail/$routeId")
+                }
             )
         }
 

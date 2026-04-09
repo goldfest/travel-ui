@@ -19,15 +19,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.automirrored.filled.Comment
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Report
 import androidx.compose.material.icons.filled.Route
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.travelguide.domain.models.POI
+import com.travelguide.domain.models.PoiWorkingHours
 import com.travelguide.ui.components.RatingBar
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -142,12 +143,6 @@ fun POIDetailScreen(
                             )
                         ) {
                             Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = null, modifier = Modifier.size(20.dp))
-                        }
-
-                        Button(
-                            onClick = onWriteReview
-                        ) {
-                            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(20.dp))
                         }
                     }
                 }
@@ -319,7 +314,10 @@ fun POIDetailScreen(
                                 Spacer(modifier = Modifier.height(16.dp))
                             }
 
+                            WorkingHoursSection(hours = poi.hours)
+
                             if (poi.features.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(16.dp))
                                 Text(
                                     text = "Особенности",
                                     style = MaterialTheme.typography.titleMedium
@@ -382,4 +380,105 @@ fun POIDetailScreen(
             }
         }
     }
+}
+
+@Composable
+private fun WorkingHoursSection(hours: List<PoiWorkingHours>) {
+    Spacer(modifier = Modifier.height(8.dp))
+    Text(
+        text = "График работы",
+        style = MaterialTheme.typography.titleMedium
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+
+    if (hours.isEmpty()) {
+        Text(
+            text = "График работы не указан",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        return
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        hours
+            .sortedWith(compareBy({ normalizeDayOfWeek(it.dayOfWeek) }, { !it.isToday }))
+            .forEach { entry ->
+                val isToday = entry.isToday
+                Surface(
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                    color = if (isToday) {
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                    }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Schedule,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = dayOfWeekLabel(entry.dayOfWeek),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+
+                        Text(
+                            text = formatHours(entry),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isToday) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                    }
+                }
+            }
+    }
+}
+
+private fun formatHours(hours: PoiWorkingHours): String {
+    if (hours.aroundTheClock) return "Круглосуточно"
+
+    val open = formatClockValue(hours.openTime)
+    val close = formatClockValue(hours.closeTime)
+
+    return if (!open.isNullOrBlank() && !close.isNullOrBlank()) {
+        "$open — $close"
+    } else {
+        "Закрыто"
+    }
+}
+
+private fun formatClockValue(value: String?): String? {
+    if (value.isNullOrBlank()) return null
+    return value.take(5)
+}
+
+private fun dayOfWeekLabel(dayOfWeek: Int?): String = when (dayOfWeek) {
+    1 -> "Понедельник"
+    2 -> "Вторник"
+    3 -> "Среда"
+    4 -> "Четверг"
+    5 -> "Пятница"
+    6 -> "Суббота"
+    7 -> "Воскресенье"
+    else -> "Не указано"
+}
+
+private fun normalizeDayOfWeek(dayOfWeek: Int?): Int = when (dayOfWeek) {
+    in 1..7 -> dayOfWeek ?: 8
+    else -> 8
 }

@@ -3,6 +3,7 @@ package com.travelguide.poi
 import com.travelguide.domain.models.Feature
 import com.travelguide.domain.models.POI
 import com.travelguide.domain.models.POIType
+import com.travelguide.domain.models.PoiWorkingHours
 import com.travelguide.network.dto.poi.PoiResponseDto
 import com.travelguide.network.dto.poi.PoiSearchRequestDto
 import com.travelguide.network.dto.poi.PoiTypeResponseDto
@@ -98,6 +99,17 @@ private fun PoiResponseDto.toDomain(): POI {
         images = media?.mapNotNull { it.url.takeIf(String::isNotBlank) } ?: emptyList(),
         features = features
             ?.map { Feature(key = it.key, value = it.value) }
+            ?: emptyList(),
+        hours = hours
+            ?.map {
+                PoiWorkingHours(
+                    dayOfWeek = it.dayOfWeek,
+                    openTime = it.openTime,
+                    closeTime = it.closeTime,
+                    aroundTheClock = it.aroundTheClock == true,
+                    isToday = it.isToday == true
+                )
+            }
             ?: emptyList()
     )
 }

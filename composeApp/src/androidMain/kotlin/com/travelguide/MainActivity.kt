@@ -1,24 +1,20 @@
-// composeApp/src/androidMain/kotlin/com/travelguide/MainActivity.kt
 package com.travelguide
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.sp
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.travelguide.theme.AppTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        requestNotificationPermissionIfNeeded()
         val container = AppContainer(this)
 
         setContent {
@@ -27,20 +23,12 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-}
 
-@Composable
-fun TestScreen() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Green),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "РАБОТАЕТ!",
-            color = Color.Red,
-            fontSize = 48.sp
-        )
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)
+            }
+        }
     }
 }

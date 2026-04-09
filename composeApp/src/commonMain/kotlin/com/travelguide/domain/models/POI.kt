@@ -16,7 +16,8 @@ data class POI(
     val poiType: POIType? = null,
     val tags: List<String> = emptyList(),
     val images: List<String> = emptyList(),
-    val features: List<Feature> = emptyList()
+    val features: List<Feature> = emptyList(),
+    val hours: List<PoiWorkingHours> = emptyList()
 ) {
     fun priceLevelText(): String = when (priceLevel) {
         0 -> "Бесплатно"
@@ -32,6 +33,15 @@ data class POI(
 data class Feature(
     val key: String,
     val value: String
+)
+
+@Serializable
+data class PoiWorkingHours(
+    val dayOfWeek: Int? = null,
+    val openTime: String? = null,
+    val closeTime: String? = null,
+    val aroundTheClock: Boolean = false,
+    val isToday: Boolean = false
 )
 
 @Serializable

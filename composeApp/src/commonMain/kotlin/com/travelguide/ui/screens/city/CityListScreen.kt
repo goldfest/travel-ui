@@ -137,107 +137,106 @@ fun CityListScreen(
             }
         }
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(paddingValues),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = "Куда отправимся?",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "Выберите город для путешествия",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "Куда отправимся?",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Выберите город для путешествия",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            item {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = {
+                        searchQuery = it
+                        onSearch(it)
+                    },
+                    label = { Text("Поиск города") },
+                    leadingIcon = {
+                        Icon(Icons.Default.Search, contentDescription = null)
+                    },
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = {
-                    searchQuery = it
-                    onSearch(it)
-                },
-                label = { Text("Поиск города") },
-                leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = null)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            )
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Рекомендуем посетить",
+                                style = MaterialTheme.typography.titleLarge
+                            )
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "Рекомендуем посетить",
-                            style = MaterialTheme.typography.titleLarge
-                        )
-
-                        TextButton(onClick = { }) {
-                            Text("Все")
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    when {
-                        isLoading && popularCities.isEmpty() -> {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(180.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator()
+                            TextButton(onClick = { }) {
+                                Text("Все")
                             }
                         }
 
-                        popularCities.isEmpty() -> {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(120.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "Популярные города пока не найдены",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        }
+                        Spacer(modifier = Modifier.height(8.dp))
 
-                        else -> {
-                            LazyRow(
-                                modifier = Modifier.height(220.dp),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
-                            ) {
-                                items(popularCities) { city ->
-                                    RecommendedCityCardHorizontal(
-                                        city = city,
-                                        onClick = { onCityClick(city.id) },
-                                        modifier = Modifier.width(300.dp)
+                        when {
+                            isLoading && popularCities.isEmpty() -> {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(180.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator()
+                                }
+                            }
+
+                            popularCities.isEmpty() -> {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(120.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Популярные города пока не найдены",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = TextAlign.Center
                                     )
+                                }
+                            }
+
+                            else -> {
+                                LazyRow(
+                                    modifier = Modifier.height(220.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                                ) {
+                                    items(popularCities) { city ->
+                                        RecommendedCityCardHorizontal(
+                                            city = city,
+                                            onClick = { onCityClick(city.id) },
+                                            modifier = Modifier.width(300.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -245,86 +244,79 @@ fun CityListScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            item {
+                Text(
+                    text = "Все города",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
 
-            Text(
-                text = "Все города",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                when {
-                    isLoading && cities.isEmpty() -> {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(24.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator()
-                            }
+            when {
+                isLoading && cities.isEmpty() -> {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
                         }
                     }
+                }
 
-                    errorMessage != null -> {
-                        item {
-                            Card(modifier = Modifier.fillMaxWidth()) {
-                                Column(modifier = Modifier.padding(16.dp)) {
-                                    Text(
-                                        text = "Ошибка загрузки",
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = errorMessage,
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    androidx.compose.material3.Button(onClick = onRetry) {
-                                        Text("Повторить")
-                                    }
+                errorMessage != null -> {
+                    item {
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = "Ошибка загрузки",
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = errorMessage,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                androidx.compose.material3.Button(onClick = onRetry) {
+                                    Text("Повторить")
                                 }
                             }
                         }
                     }
+                }
 
-                    cities.isEmpty() -> {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(24.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "Города не найдены",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-
-                    else -> {
-                        items(cities) { city ->
-                            EnhancedCityCard(
-                                city = city,
-                                onClick = { onCityClick(city.id) }
+                cities.isEmpty() -> {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Города не найдены",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                    }
+                }
+
+                else -> {
+                    items(cities) { city ->
+                        EnhancedCityCard(
+                            city = city,
+                            onClick = { onCityClick(city.id) }
+                        )
                     }
                 }
             }
         }
     }
 }
-
 @Composable
 fun RecommendedCityCard(
     city: City,
