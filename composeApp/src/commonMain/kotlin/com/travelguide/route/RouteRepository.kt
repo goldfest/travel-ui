@@ -37,7 +37,16 @@ import com.travelguide.route.offline.RouteOfflineGraphDaySnapshot
 import com.travelguide.route.offline.RouteOfflineGraphSegmentSnapshot
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-
+import com.travelguide.domain.models.RouteOptimizationSummary
+import com.travelguide.domain.models.RouteUnscheduledPoint
+import com.travelguide.network.dto.route.RouteOptimizationSummaryDto
+import com.travelguide.network.dto.route.RouteUnscheduledPointDto
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.decodeFromJsonElement
+private val routeResponseJson = Json {
+    ignoreUnknownKeys = true
+    encodeDefaults = true
+}
 class RouteRepository(
     private val api: RouteApi,
     private val poiRepository: PoiRepository,
@@ -415,7 +424,8 @@ class RouteRepository(
                 isOptimized = true,
                 optimizationMode = request.optimizationMode,
                 days = updatedDays,
-                points = updatedDays.flatMap { it.points }
+                points = updatedDays.flatMap { it.points },
+                optimizationSummary = null
             )
 
             saveOfflineMutation(
@@ -558,6 +568,13 @@ private fun RouteResponseDto.toDomain(): Route {
     val domainDays = days.map { it.toDomain() }
     val flatPoints = if (points.isNotEmpty()) points.map { it.toDomain() } else domainDays.flatMap { it.points }
 
+    val optimizationSummary = additionalProperties["optimizationSummary"]
+        ?.let { jsonElement ->
+            runCatching {
+                routeResponseJson.decodeFromJsonElement<RouteOptimizationSummaryDto>(jsonElement).toDomain()
+            }.getOrNull()
+        }
+
     return Route(
         id = id.toInt(),
         name = name,
@@ -575,7 +592,8 @@ private fun RouteResponseDto.toDomain(): Route {
         cityId = cityId.toInt(),
         points = flatPoints,
         days = domainDays,
-        warnings = warnings
+        warnings = warnings,
+        optimizationSummary = optimizationSummary
     )
 }
 
@@ -733,3 +751,24 @@ private fun mergeDateAndTime(date: String?, time: String?): String? {
     val safeTime = time?.takeIf { it.isNotBlank() } ?: return null
     return "${safeDate}T${safeTime}:00"
 }
+
+private fun RouteOptimizationSummaryDto.toDomain(): RouteOptimizationSummary =
+    RouteOptimizationSummary(
+        mode = mode,
+        scheduledPointsCount = scheduledPointsCount,
+        unscheduledPointsCount = unscheduledPointsCount,
+        scheduledPointIds = scheduledPointIds.map { it.toInt() },
+        unscheduledPoints = unscheduledPoints.map { it.toDomain() }
+    )
+
+private fun RouteUnscheduledPointDto.toDomain(): RouteUnscheduledPoint =
+    RouteUnscheduledPoint(
+        routePointId = routePointId.toInt(),
+        poiId = poiId?.toInt(),
+        poiName = poiName,
+        routeDayId = routeDayId?.toInt(),
+        dayNumber = dayNumber,
+        routeDate = routeDate,
+        reasonCode = reasonCode,
+        reason = reason
+    )

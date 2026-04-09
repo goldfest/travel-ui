@@ -20,7 +20,8 @@ data class Route(
     val cityId: Int,
     val points: List<RoutePoint> = emptyList(),
     val days: List<RouteDay> = emptyList(),
-    val warnings: List<String> = emptyList()
+    val warnings: List<String> = emptyList(),
+    val optimizationSummary: RouteOptimizationSummary? = null
 ) {
     fun transportModeText(): String = transportMode.label()
     val isArchived: Boolean get() = status == RouteStatus.ARCHIVED

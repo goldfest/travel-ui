@@ -1,6 +1,7 @@
 package com.travelguide.network.dto.route
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
 @Serializable
 data class RoutePageResponseDto(
@@ -31,7 +32,8 @@ data class RouteResponseDto(
     val points: List<RoutePointResponseDto> = emptyList(),
     val daysCount: Int? = null,
     val totalPoints: Int? = null,
-    val warnings: List<String> = emptyList()
+    val warnings: List<String> = emptyList(),
+    val additionalProperties: Map<String, JsonElement> = emptyMap()
 )
 
 @Serializable
@@ -114,6 +116,27 @@ data class RouteOptimizationRequestDto(
     val optimizationMode: String = "TIME_WINDOW",
     val daySettings: List<RouteOptimizationDayRequestDto> = emptyList(),
     val visitMinutesByRoutePointId: Map<Long, Int> = emptyMap()
+)
+
+@Serializable
+data class RouteOptimizationSummaryDto(
+    val mode: String? = null,
+    val scheduledPointsCount: Int = 0,
+    val unscheduledPointsCount: Int = 0,
+    val scheduledPointIds: List<Long> = emptyList(),
+    val unscheduledPoints: List<RouteUnscheduledPointDto> = emptyList()
+)
+
+@Serializable
+data class RouteUnscheduledPointDto(
+    val routePointId: Long,
+    val poiId: Long? = null,
+    val poiName: String? = null,
+    val routeDayId: Long? = null,
+    val dayNumber: Int? = null,
+    val routeDate: String? = null,
+    val reasonCode: String? = null,
+    val reason: String? = null
 )
 
 @Serializable
