@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+import com.travelguide.core.toUserMessage
 class PoiViewModel(
     private val repository: PoiRepository,
     private val favoriteRepository: FavoriteRepository,
@@ -49,7 +50,7 @@ class PoiViewModel(
             }.onFailure { e ->
                 _listState.value = _listState.value.copy(
                     isLoading = false,
-                    errorMessage = e.message ?: "Не удалось загрузить достопримечательности"
+                    errorMessage = e.toUserMessage("Не удалось загрузить достопримечательности")
                 )
             }
         }
@@ -87,7 +88,7 @@ class PoiViewModel(
             }.onFailure { e ->
                 _listState.value = _listState.value.copy(
                     isLoading = false,
-                    errorMessage = e.message ?: "Ошибка поиска достопримечательностей"
+                    errorMessage = e.toUserMessage("Ошибка поиска достопримечательностей")
                 )
             }
         }
@@ -121,7 +122,7 @@ class PoiViewModel(
                     isFavorite = false,
                     averageRating = null,
                     reviewCount = 0,
-                    errorMessage = e.message ?: "Не удалось загрузить объект"
+                    errorMessage = e.toUserMessage("Не удалось загрузить объект")
                 )
             }
         }
@@ -145,7 +146,7 @@ class PoiViewModel(
                 updateFavoriteInList(poi.id, newValue)
             }.onFailure { e ->
                 _detailsState.value = _detailsState.value.copy(
-                    errorMessage = e.message ?: "Не удалось обновить избранное"
+                    errorMessage = e.toUserMessage("Не удалось обновить избранное")
                 )
             }
         }
@@ -168,7 +169,7 @@ class PoiViewModel(
                 updateFavoriteInDetails(poiId, newValue)
             }.onFailure { e ->
                 _listState.value = _listState.value.copy(
-                    errorMessage = e.message ?: "Не удалось обновить избранное"
+                    errorMessage = e.toUserMessage("Не удалось обновить избранное")
                 )
             }
         }

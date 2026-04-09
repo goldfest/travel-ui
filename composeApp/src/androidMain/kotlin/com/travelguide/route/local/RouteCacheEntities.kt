@@ -26,6 +26,32 @@ data class OfflineRoutePoiCatalogEntity(
     val poisJson: String
 )
 
+@Entity(tableName = "offline_route_download")
+data class OfflineRouteDownloadEntity(
+    @PrimaryKey val routeId: Int,
+    val downloadedAtEpochMs: Long,
+    val updatedAtEpochMs: Long,
+    val hasTiles: Boolean,
+    val hasArchive: Boolean,
+    val tileMinZoom: Int,
+    val tileMaxZoom: Int,
+    val graphVersion: Int = 1
+)
+
+@Entity(tableName = "offline_route_graph_cache")
+data class OfflineRouteGraphCacheEntity(
+    @PrimaryKey val routeId: Int,
+    val updatedAtEpochMs: Long,
+    val graphJson: String
+)
+
+@Entity(tableName = "offline_route_archive_cache")
+data class OfflineRouteArchiveCacheEntity(
+    @PrimaryKey val routeId: Int,
+    val updatedAtEpochMs: Long,
+    val archiveBytes: ByteArray
+)
+
 @Entity(tableName = "route_sync_queue")
 data class RouteSyncQueueEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0L,

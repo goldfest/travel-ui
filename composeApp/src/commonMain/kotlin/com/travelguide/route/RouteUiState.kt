@@ -4,10 +4,16 @@ import com.travelguide.domain.models.POI
 import com.travelguide.domain.models.Route
 import com.travelguide.domain.models.TransportMode
 
+enum class RouteListFilter {
+    ACTIVE,
+    ARCHIVED,
+    OFFLINE
+}
+
 data class RouteListUiState(
     val isLoading: Boolean = false,
     val routes: List<Route> = emptyList(),
-    val showArchived: Boolean = false,
+    val filter: RouteListFilter = RouteListFilter.ACTIVE,
     val deletingRouteId: Int? = null,
     val errorMessage: String? = null
 )
@@ -15,6 +21,7 @@ data class RouteListUiState(
 data class RouteDetailUiState(
     val isLoading: Boolean = false,
     val route: Route? = null,
+    val isOfflineAvailable: Boolean = false,
     val errorMessage: String? = null
 )
 

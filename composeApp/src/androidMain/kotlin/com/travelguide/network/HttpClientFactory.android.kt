@@ -7,12 +7,14 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpResponseValidator
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.auth.Auth
 import io.ktor.client.plugins.auth.providers.BearerTokens
 import io.ktor.client.plugins.auth.providers.bearer
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.logging.*
-import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logger
+import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -23,17 +25,22 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 
-
 actual class HttpClientFactory {
     actual fun create(baseUrl: String, storage: TokenStorage): HttpClient {
         val refreshMutex = Mutex()
 
-        // отдельный клиент ТОЛЬКО для refresh (без Auth)
         val refreshClient = HttpClient(OkHttp) {
             install(ContentNegotiation) {
                 json(Json { ignoreUnknownKeys = true; isLenient = true; encodeDefaults = true })
             }
-            install(Logging) { logger = Logger.DEFAULT; level = LogLevel.ALL }
+            install(Logging) {
+                logger = object : Logger {
+                    override fun log(message: String) {
+                        android.util.Log.d("KTOR_HTTP", message)
+                    }
+                }
+                level = LogLevel.ALL
+            }
             install(HttpTimeout) {
                 requestTimeoutMillis = 120_000
                 connectTimeoutMillis = 15_000

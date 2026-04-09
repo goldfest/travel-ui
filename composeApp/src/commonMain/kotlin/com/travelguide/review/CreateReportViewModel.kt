@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+import com.travelguide.core.toUserMessage
 data class CreateReportUiState(
     val isLoading: Boolean = false,
     val success: Boolean = false,
@@ -37,7 +38,7 @@ class CreateReportViewModel(
                 _state.value = CreateReportUiState(success = true)
             }.onFailure {
                 _state.value = CreateReportUiState(
-                    error = it.message ?: "Не удалось отправить жалобу"
+                    error = it.toUserMessage("Не удалось отправить жалобу")
                 )
             }
         }

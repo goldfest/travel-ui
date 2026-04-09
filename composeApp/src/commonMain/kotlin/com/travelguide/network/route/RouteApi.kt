@@ -5,6 +5,7 @@ import com.travelguide.network.dto.route.CityGraphStatusResponseDto
 import com.travelguide.network.dto.route.CreateRouteRequestDto
 import com.travelguide.network.dto.route.GenerateRouteRequestDto
 import com.travelguide.network.dto.route.ReorderRouteDayPointsRequestDto
+import com.travelguide.network.dto.route.RouteOptimizationRequestDto
 import com.travelguide.network.dto.route.RouteMapResponseDto
 import com.travelguide.network.dto.route.RouteResponseDto
 import com.travelguide.network.dto.route.UpdateRouteRequestDto
@@ -117,10 +118,11 @@ class RouteApi(
 
     suspend fun optimizeRoute(
         routeId: Long,
-        mode: String = "distance"
+        request: RouteOptimizationRequestDto
     ): RouteResponseDto {
         return client.post("$routesUrl/$routeId/optimize") {
-            parameter("optimizationMode", mode)
+            contentType(ContentType.Application.Json)
+            setBody(request)
         }.body()
     }
 

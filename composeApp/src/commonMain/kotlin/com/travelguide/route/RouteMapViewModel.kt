@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+import com.travelguide.core.toUserMessage
 data class RouteMapUiState(
     val isLoading: Boolean = false,
     val routeMap: RouteMap? = null,
@@ -42,7 +43,7 @@ class RouteMapViewModel(
             }.onFailure { e ->
                 _state.value = RouteMapUiState(
                     isLoading = false,
-                    errorMessage = e.message ?: "Не удалось загрузить карту маршрута"
+                    errorMessage = e.toUserMessage("Не удалось загрузить карту маршрута")
                 )
             }
         }

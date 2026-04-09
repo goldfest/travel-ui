@@ -5,7 +5,6 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.russhwolf.settings.SharedPreferencesSettings
 import com.travelguide.auth.TokenStorage
-import com.travelguide.domain.models.LatLng
 import com.travelguide.domain.models.Route
 import com.travelguide.domain.models.RouteDay
 import com.travelguide.domain.models.RouteMap
@@ -20,17 +19,21 @@ import com.travelguide.network.dto.route.CreateRouteDayRequestDto
 import com.travelguide.network.dto.route.CreateRoutePointRequestDto
 import com.travelguide.network.dto.route.CreateRouteRequestDto
 import com.travelguide.network.dto.route.RouteDayResponseDto
+import com.travelguide.network.dto.route.RouteOptimizationRequestDto
 import com.travelguide.network.dto.route.RoutePointResponseDto
 import com.travelguide.network.dto.route.RouteResponseDto
 import com.travelguide.network.dto.route.UpdateRouteRequestDto
 import com.travelguide.network.route.RouteApi
+import com.travelguide.route.toDomain as toDomainRouteMap
 import com.travelguide.route.offline.AddRoutePointSyncPayload
 import com.travelguide.route.offline.CreateRouteSyncPayload
 import com.travelguide.route.offline.OptimizeRouteSyncPayload
 import com.travelguide.route.offline.RemoveRoutePointSyncPayload
 import com.travelguide.route.offline.ReorderRouteDaySyncPayload
+import com.travelguide.route.offline.RouteOfflineGraphSnapshot
 import com.travelguide.route.offline.RouteSyncOperationType
 import com.travelguide.route.offline.UpdateRouteMetaSyncPayload
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 class RouteSyncWorker(
@@ -69,6 +72,12 @@ class RouteSyncWorker(
             val fresh = routeApi.getRoutes(page = 0, size = 100).content.map { it.toDomain() }
             val archived = routeApi.getArchivedRoutes(page = 0, size = 100).content.map { it.toDomain() }
             store.saveRoutes(fresh + archived)
+
+            dao.getOfflineDownloads().forEach { offline ->
+                val route = (fresh + archived).firstOrNull { it.id == offline.routeId } ?: return@forEach
+                refreshOfflineArtifacts(route)
+            }
+
             Result.success()
         }.getOrElse {
             ops.firstOrNull()?.let { first -> dao.incrementAttempts(first.id) }
@@ -106,7 +115,7 @@ class RouteSyncWorker(
         store.deleteRoute(payload.localRouteId)
         store.deleteRouteMap(payload.localRouteId)
         store.saveRoute(response)
-        store.saveRouteMap(response.toFallbackMap())
+        store.saveRouteMap(fetchFreshMap(response))
         dao.rebindQueuedRouteId(payload.localRouteId, response.id)
     }
 
@@ -121,7 +130,7 @@ class RouteSyncWorker(
             )
         ).toDomain()
         store.saveRoute(response)
-        store.saveRouteMap(response.toFallbackMap())
+        store.saveRouteMap(fetchFreshMap(response))
     }
 
     private suspend fun syncAddPoint(op: RouteSyncQueueEntity) {
@@ -133,7 +142,7 @@ class RouteSyncWorker(
             orderIndex = payload.orderIndex
         ).toDomain()
         store.saveRoute(response)
-        store.saveRouteMap(response.toFallbackMap())
+        store.saveRouteMap(fetchFreshMap(response))
     }
 
     private suspend fun syncRemovePoint(op: RouteSyncQueueEntity) {
@@ -143,7 +152,7 @@ class RouteSyncWorker(
             routePointId = payload.routePointId.toLong()
         ).toDomain()
         store.saveRoute(response)
-        store.saveRouteMap(response.toFallbackMap())
+        store.saveRouteMap(fetchFreshMap(response))
     }
 
     private suspend fun syncReorder(op: RouteSyncQueueEntity) {
@@ -154,14 +163,60 @@ class RouteSyncWorker(
             routePointIdsInOrder = payload.orderedPointIds.map { it.toLong() }
         ).toDomain()
         store.saveRoute(response)
-        store.saveRouteMap(response.toFallbackMap())
+        store.saveRouteMap(fetchFreshMap(response))
     }
 
     private suspend fun syncOptimize(op: RouteSyncQueueEntity) {
         val payload = json.decodeFromString(OptimizeRouteSyncPayload.serializer(), op.payloadJson)
-        val response = routeApi.optimizeRoute(payload.routeId.toLong(), payload.mode).toDomain()
+
+        val response = routeApi.optimizeRoute(
+            payload.routeId.toLong(),
+            payload.request
+        ).toDomain()
+
         store.saveRoute(response)
-        store.saveRouteMap(response.toFallbackMap())
+        store.saveRouteMap(fetchFreshMap(response))
+    }
+
+    private suspend fun fetchFreshMap(route: Route): RouteMap {
+        return runCatching { routeApi.getRouteMap(route.id.toLong()).toDomainRouteMap() }
+            .getOrElse { route.toFallbackMap() }
+    }
+
+    private suspend fun refreshOfflineArtifacts(route: Route) {
+        val routeMap = fetchFreshMap(route)
+        store.saveRoute(route)
+        store.saveRouteMap(routeMap)
+
+        val graphJson = json.encodeToString(
+            RouteOfflineGraphSnapshot(
+                routeId = route.id,
+                routeName = route.name,
+                days = routeMap.days.map { day ->
+                    com.travelguide.route.offline.RouteOfflineGraphDaySnapshot(
+                        routeDayId = day.routeDayId,
+                        dayNumber = day.dayNumber,
+                        segments = day.segments.map { segment ->
+                            com.travelguide.route.offline.RouteOfflineGraphSegmentSnapshot(
+                                fromRoutePointId = segment.fromRoutePointId,
+                                toRoutePointId = segment.toRoutePointId,
+                                distanceKm = segment.distanceKm,
+                                durationMin = segment.durationMin,
+                                transportMode = segment.transportMode,
+                                provider = segment.provider,
+                                status = segment.status,
+                                coordinates = segment.polyline?.coordinates.orEmpty()
+                            )
+                        }
+                    )
+                }
+            )
+        )
+
+        runCatching { routeApi.downloadOfflineRoute(route.id.toLong()) }
+            .onSuccess { archive -> store.saveOfflineArchive(route.id, archive) }
+
+        store.markRouteOffline(route.id, routeMap, graphJson)
     }
 }
 
@@ -234,7 +289,7 @@ private fun Route.toFallbackMap(): RouteMap =
                         coordinates = routePoints.mapNotNull { point ->
                             val lat = point.poiLatitude ?: point.poi?.latitude
                             val lng = point.poiLongitude ?: point.poi?.longitude
-                            if (lat != null && lng != null) LatLng(lat, lng) else null
+                            if (lat != null && lng != null) com.travelguide.domain.models.LatLng(lat, lng) else null
                         }
                     )
                 } else null,

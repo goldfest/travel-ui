@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+import com.travelguide.core.toUserMessage
 class SearchViewModel(
     private val cityRepository: CityRepository,
     private val poiRepository: PoiRepository,
@@ -129,7 +130,7 @@ class SearchViewModel(
             }.onFailure { e ->
                 _state.value = _state.value.copy(
                     isLoading = false,
-                    errorMessage = e.message ?: "Ошибка поиска"
+                    errorMessage = e.toUserMessage("Ошибка поиска")
                 )
             }
         }
@@ -165,7 +166,7 @@ class SearchViewModel(
             }.onFailure { e ->
                 _state.value = _state.value.copy(
                     isLoading = false,
-                    errorMessage = e.message ?: "Ошибка поиска объектов"
+                    errorMessage = e.toUserMessage("Ошибка поиска объектов")
                 )
             }
         }

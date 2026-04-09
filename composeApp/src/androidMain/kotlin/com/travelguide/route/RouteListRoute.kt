@@ -31,14 +31,14 @@ fun RouteListRoute(
     RouteListScreen(
         routes = state.routes,
         isLoading = state.isLoading,
-        showArchived = state.showArchived,
+        filter = state.filter,
         deletingRouteId = state.deletingRouteId,
         errorMessage = state.errorMessage,
-        onRetry = { vm.loadRoutes() },
+        onRetry = { vm.loadRoutes(state.filter) },
         onBackClick = onBackClick,
-        onToggleArchived = { vm.toggleArchiveFilter() },
+        onFilterChange = vm::setFilter,
         onRouteClick = onRouteClick,
-        onDeleteRoute = { vm.deleteRoute(it) },
+        onDeleteRoute = vm::deleteRoute,
         onCreateRoute = onCreateRoute
     )
 }

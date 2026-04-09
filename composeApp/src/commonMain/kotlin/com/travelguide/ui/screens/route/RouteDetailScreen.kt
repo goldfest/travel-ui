@@ -58,6 +58,7 @@ import com.travelguide.domain.models.Route
 import com.travelguide.domain.models.RouteDay
 import com.travelguide.domain.models.RoutePoint
 import com.travelguide.domain.models.RouteStatus
+import com.travelguide.route.RouteOptimizationForm
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,13 +71,15 @@ fun RouteDetailScreen(
     onEditClick: () -> Unit,
     onViewMap: () -> Unit,
     onViewList: () -> Unit,
-    onOptimizeClick: () -> Unit,
+    onOptimizeClick: (RouteOptimizationForm) -> Unit,
     onDownloadOfflineClick: () -> Unit,
     onExportPdfClick: () -> Unit,
     onExportGpxClick: () -> Unit,
-    onExportJsonClick: () -> Unit
+    onExportJsonClick: () -> Unit,
+    onExportOfflineArchiveClick: () -> Unit
 ) {
     var exportMenuExpanded by remember { mutableStateOf(false) }
+    var optimizeDialogExpanded by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -113,7 +116,7 @@ fun RouteDetailScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
                     ) {
                         FilledTonalButton(
-                            onClick = onOptimizeClick,
+                            onClick = { optimizeDialogExpanded = true },
                             enabled = route.status != RouteStatus.GRAPH_PREPARING
                         ) {
                             Icon(Icons.Default.Tune, contentDescription = null)
@@ -164,6 +167,13 @@ fun RouteDetailScreen(
                                         onExportJsonClick()
                                     }
                                 )
+                                DropdownMenuItem(
+                                    text = { Text("ZIP оффлайн") },
+                                    onClick = {
+                                        exportMenuExpanded = false
+                                        onExportOfflineArchiveClick()
+                                    }
+                                )
                             }
                         }
                     }
@@ -171,6 +181,16 @@ fun RouteDetailScreen(
             }
         }
     ) { paddingValues ->
+        if (route != null && optimizeDialogExpanded) {
+            RouteOptimizationDialog(
+                route = route,
+                onDismiss = { optimizeDialogExpanded = false },
+                onConfirm = { form ->
+                    optimizeDialogExpanded = false
+                    onOptimizeClick(form)
+                }
+            )
+        }
         when {
             isLoading && route == null -> {
                 Column(

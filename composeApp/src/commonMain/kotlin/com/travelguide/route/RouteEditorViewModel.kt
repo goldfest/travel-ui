@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+import com.travelguide.core.toUserMessage
 class RouteEditorViewModel(
     private val routeRepository: RouteRepository,
     private val cityRepository: CityRepository
@@ -56,7 +57,7 @@ class RouteEditorViewModel(
             }.onFailure { e ->
                 _state.value = _state.value.copy(
                     isLoading = false,
-                    errorMessage = e.message ?: "Не удалось подготовить создание маршрута"
+                    errorMessage = e.toUserMessage("Не удалось подготовить создание маршрута")
                 )
             }
         }
@@ -120,7 +121,7 @@ class RouteEditorViewModel(
             }.onFailure { e ->
                 _state.value = _state.value.copy(
                     isLoading = false,
-                    errorMessage = e.message ?: "Не удалось загрузить маршрут"
+                    errorMessage = e.toUserMessage("Не удалось загрузить маршрут")
                 )
             }
         }
@@ -177,7 +178,7 @@ class RouteEditorViewModel(
             }.onFailure { e ->
                 _state.value = _state.value.copy(
                     isLoading = false,
-                    errorMessage = e.message ?: "Не удалось выбрать город"
+                    errorMessage = e.toUserMessage("Не удалось выбрать город")
                 )
             }
         }
@@ -220,7 +221,7 @@ class RouteEditorViewModel(
                 _state.value = _state.value.copy(
                     isGraphDownloadInProgress = false,
                     isGraphLoading = false,
-                    errorMessage = e.message ?: "Не удалось скачать граф города"
+                    errorMessage = e.toUserMessage("Не удалось скачать граф города")
                 )
             }
         }
@@ -402,7 +403,7 @@ class RouteEditorViewModel(
             }.onFailure { e ->
                 _state.value = _state.value.copy(
                     isSaving = false,
-                    errorMessage = e.message ?: "Не удалось сохранить маршрут"
+                    errorMessage = e.toUserMessage("Не удалось сохранить маршрут")
                 )
             }
         }

@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+import com.travelguide.core.toUserMessage
 class CollectionPickerViewModel(
     private val repository: CollectionRepository
 ) : ViewModel() {
@@ -32,7 +33,7 @@ class CollectionPickerViewModel(
             }.onFailure { e ->
                 _state.value = _state.value.copy(
                     isLoading = false,
-                    errorMessage = e.message ?: "Не удалось загрузить коллекции"
+                    errorMessage = e.toUserMessage("Не удалось загрузить коллекции")
                 )
             }
         }
@@ -61,7 +62,7 @@ class CollectionPickerViewModel(
             }.onFailure { e ->
                 _state.value = _state.value.copy(
                     isAdding = false,
-                    errorMessage = e.message ?: "Не удалось добавить объект в коллекцию"
+                    errorMessage = e.toUserMessage("Не удалось добавить объект в коллекцию")
                 )
             }
         }

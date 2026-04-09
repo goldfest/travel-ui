@@ -17,6 +17,7 @@ import com.travelguide.network.dto.route.CreateRouteRequestDto
 import com.travelguide.network.dto.route.GenerateRouteRequestDto
 import com.travelguide.network.dto.route.RouteDayResponseDto
 import com.travelguide.network.dto.route.RouteMapResponseDto
+import com.travelguide.network.dto.route.RouteOptimizationRequestDto
 import com.travelguide.network.dto.route.RoutePointResponseDto
 import com.travelguide.network.dto.route.RouteResponseDto
 import com.travelguide.network.dto.route.UpdateRouteRequestDto
@@ -31,6 +32,9 @@ import com.travelguide.route.offline.ReorderRouteDaySyncPayload
 import com.travelguide.route.offline.RouteLocalStore
 import com.travelguide.route.offline.RouteSyncOperationType
 import com.travelguide.route.offline.UpdateRouteMetaSyncPayload
+import com.travelguide.route.offline.RouteOfflineGraphSnapshot
+import com.travelguide.route.offline.RouteOfflineGraphDaySnapshot
+import com.travelguide.route.offline.RouteOfflineGraphSegmentSnapshot
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -47,6 +51,48 @@ class RouteRepository(
 
     suspend fun requestCityGraphDownload(cityId: Int): Boolean {
         return api.requestCityGraphDownload(cityId.toLong()).ready
+    }
+
+    suspend fun getOfflineRoutes(): List<Route> {
+        return localStore?.getOfflineRoutes().orEmpty()
+    }
+
+    suspend fun isRouteOffline(routeId: Int): Boolean {
+        return localStore?.isRouteOffline(routeId) == true
+    }
+
+    suspend fun saveRouteOffline(routeId: Int): Route {
+        val store = localStore ?: error("Local store is not configured")
+        val route = getRouteById(routeId)
+        val routeMap = getRouteMap(routeId)
+
+        store.saveRoute(route)
+        store.saveRouteMap(routeMap)
+
+        val pois = runCatching { poiRepository.getPoisByCity(route.cityId) }
+            .getOrElse { store.getPoisByCity(route.cityId) }
+        if (pois.isNotEmpty()) {
+            store.savePoisByCity(route.cityId, pois)
+        }
+
+        runCatching { api.downloadOfflineRoute(routeId.toLong()) }
+            .onSuccess { archiveBytes -> store.saveOfflineArchive(routeId, archiveBytes) }
+
+        store.markRouteOffline(
+            routeId = routeId,
+            routeMap = routeMap,
+            graphJson = routeMap.toOfflineGraphJson(json)
+        )
+
+        return route
+    }
+
+    suspend fun removeOfflineRoute(routeId: Int) {
+        localStore?.unmarkRouteOffline(routeId)
+    }
+
+    suspend fun getOfflineArchive(routeId: Int): ByteArray? {
+        return localStore?.getOfflineArchive(routeId)
     }
 
     suspend fun downloadOfflineRoute(routeId: Int): ByteArray {
@@ -335,9 +381,9 @@ class RouteRepository(
         }
     }
 
-    suspend fun optimizeRoute(routeId: Int, mode: String = "distance"): Route {
+    suspend fun optimizeRoute(routeId: Int, request: RouteOptimizationRequestDto): Route {
         return runCatching {
-            api.optimizeRoute(routeId.toLong(), mode).toDomain().also {
+            api.optimizeRoute(routeId.toLong(), request).toDomain().also {
                 localStore?.saveRoute(it)
                 localStore?.saveRouteMap(it.toFallbackMap())
             }
@@ -345,14 +391,19 @@ class RouteRepository(
             val store = localStore ?: throw error
             val updated = (store.getRoute(routeId) ?: throw error).copy(
                 isOptimized = true,
-                optimizationMode = mode
+                optimizationMode = request.optimizationMode
             )
             saveOfflineMutation(
                 updatedRoute = updated,
                 operation = PendingRouteSyncOperation(
                     routeId = routeId,
                     operationType = RouteSyncOperationType.OPTIMIZE_ROUTE,
-                    payloadJson = json.encodeToString(OptimizeRouteSyncPayload(routeId, mode))
+                    payloadJson = json.encodeToString(
+                        OptimizeRouteSyncPayload(
+                            routeId = routeId,
+                            request = request
+                        )
+                    )
                 )
             )
             updated
@@ -620,4 +671,31 @@ private fun Route.reorderDay(dayId: Int, orderedPointIds: List<Int>): Route {
         day.copy(points = reordered)
     }
     return copy(days = updatedDays, points = updatedDays.flatMap { it.points })
+}
+
+
+private fun RouteMap.toOfflineGraphJson(json: Json): String {
+    val snapshot = RouteOfflineGraphSnapshot(
+        routeId = routeId,
+        routeName = routeName,
+        days = days.map { day ->
+            RouteOfflineGraphDaySnapshot(
+                routeDayId = day.routeDayId,
+                dayNumber = day.dayNumber,
+                segments = day.segments.map { segment ->
+                    RouteOfflineGraphSegmentSnapshot(
+                        fromRoutePointId = segment.fromRoutePointId,
+                        toRoutePointId = segment.toRoutePointId,
+                        distanceKm = segment.distanceKm,
+                        durationMin = segment.durationMin,
+                        transportMode = segment.transportMode,
+                        provider = segment.provider,
+                        status = segment.status,
+                        coordinates = segment.polyline?.coordinates.orEmpty()
+                    )
+                }
+            )
+        }
+    )
+    return json.encodeToString(snapshot)
 }

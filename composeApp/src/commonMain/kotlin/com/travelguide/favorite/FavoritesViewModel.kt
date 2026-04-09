@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+import com.travelguide.core.toUserMessage
 class FavoritesViewModel(
     private val repository: FavoriteRepository
 ) : ViewModel() {
@@ -33,7 +34,7 @@ class FavoritesViewModel(
                 _state.value = FavoritesUiState(
                     isLoading = false,
                     favorites = emptyList(),
-                    errorMessage = e.message ?: "Не удалось загрузить избранное"
+                    errorMessage = e.toUserMessage("Не удалось загрузить избранное")
                 )
             }
         }
@@ -49,7 +50,7 @@ class FavoritesViewModel(
                 )
             }.onFailure { e ->
                 _state.value = _state.value.copy(
-                    errorMessage = e.message ?: "Не удалось удалить из избранного"
+                    errorMessage = e.toUserMessage("Не удалось удалить из избранного")
                 )
             }
         }

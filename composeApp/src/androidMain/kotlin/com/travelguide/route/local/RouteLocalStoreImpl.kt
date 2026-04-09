@@ -17,6 +17,14 @@ class RouteLocalStoreImpl(
             .sortedByDescending { it.id }
     }
 
+    override suspend fun getOfflineRoutes(): List<Route> {
+        val offlineIds = dao.getOfflineDownloads().map { it.routeId }.toSet()
+        return dao.getAllRoutes()
+            .map { RouteJson.decodeRoute(it.routeJson) }
+            .filter { it.id in offlineIds }
+            .sortedByDescending { it.id }
+    }
+
     override suspend fun saveRoutes(routes: List<Route>) {
         routes.forEach { saveRoute(it) }
     }
@@ -39,6 +47,9 @@ class RouteLocalStoreImpl(
 
     override suspend fun deleteRoute(routeId: Int) {
         dao.deleteRoute(routeId)
+        dao.deleteOfflineDownload(routeId)
+        dao.deleteOfflineGraph(routeId)
+        dao.deleteOfflineArchive(routeId)
     }
 
     override suspend fun getRouteMap(routeId: Int): RouteMap? {
@@ -83,6 +94,59 @@ class RouteLocalStoreImpl(
                 }
             }
             .firstOrNull { it.id == poiId }
+    }
+
+    override suspend fun markRouteOffline(routeId: Int, routeMap: RouteMap, graphJson: String?) {
+        val now = System.currentTimeMillis()
+        dao.upsertOfflineDownload(
+            OfflineRouteDownloadEntity(
+                routeId = routeId,
+                downloadedAtEpochMs = now,
+                updatedAtEpochMs = now,
+                hasTiles = true,
+                hasArchive = dao.getOfflineArchive(routeId) != null,
+                tileMinZoom = 12,
+                tileMaxZoom = 16
+            )
+        )
+        if (!graphJson.isNullOrBlank()) {
+            dao.upsertOfflineGraph(
+                OfflineRouteGraphCacheEntity(
+                    routeId = routeId,
+                    updatedAtEpochMs = now,
+                    graphJson = graphJson
+                )
+            )
+        }
+        saveRouteMap(routeMap)
+    }
+
+    override suspend fun unmarkRouteOffline(routeId: Int) {
+        dao.deleteOfflineDownload(routeId)
+        dao.deleteOfflineGraph(routeId)
+        dao.deleteOfflineArchive(routeId)
+    }
+
+    override suspend fun isRouteOffline(routeId: Int): Boolean {
+        return dao.getOfflineDownload(routeId) != null
+    }
+
+    override suspend fun getOfflineRouteGraph(routeId: Int): String? {
+        return dao.getOfflineGraph(routeId)?.graphJson
+    }
+
+    override suspend fun getOfflineArchive(routeId: Int): ByteArray? {
+        return dao.getOfflineArchive(routeId)?.archiveBytes
+    }
+
+    override suspend fun saveOfflineArchive(routeId: Int, archiveBytes: ByteArray) {
+        dao.upsertOfflineArchive(
+            OfflineRouteArchiveCacheEntity(
+                routeId = routeId,
+                updatedAtEpochMs = System.currentTimeMillis(),
+                archiveBytes = archiveBytes
+            )
+        )
     }
 
     override suspend fun enqueue(operation: PendingRouteSyncOperation) {

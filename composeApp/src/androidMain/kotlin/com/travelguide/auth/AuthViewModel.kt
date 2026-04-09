@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+import com.travelguide.core.toUserMessage
 class AuthViewModel(
     private val repo: AuthRepository
 ) : ViewModel() {
@@ -22,7 +23,7 @@ class AuthViewModel(
                 _state.update { it.copy(isLoading = false, user = user) }
                 onSuccess()
             } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, error = e.message ?: "Login error") }
+                _state.update { it.copy(isLoading = false, error = e.toUserMessage("Login error")) }
             }
         }
     }
@@ -35,7 +36,7 @@ class AuthViewModel(
                 _state.update { it.copy(isLoading = false, user = user) }
                 onSuccess()
             } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, error = e.message ?: "Register error") }
+                _state.update { it.copy(isLoading = false, error = e.toUserMessage("Register error")) }
             }
         }
     }

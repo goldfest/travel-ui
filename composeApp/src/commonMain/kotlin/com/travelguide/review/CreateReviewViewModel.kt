@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+import com.travelguide.core.toUserMessage
 data class CreateReviewUiState(
     val isLoading: Boolean = false,
     val success: Boolean = false,
@@ -34,7 +35,7 @@ class CreateReviewViewModel(
             }.onFailure {
                 _state.value = CreateReviewUiState(
                     isLoading = false,
-                    error = it.message ?: "Не удалось отправить отзыв"
+                    error = it.toUserMessage("Не удалось отправить отзыв")
                 )
             }
         }

@@ -34,6 +34,36 @@ interface RouteCacheDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertPoiCatalog(entity: OfflineRoutePoiCatalogEntity)
 
+    @Query("SELECT * FROM offline_route_download")
+    suspend fun getOfflineDownloads(): List<OfflineRouteDownloadEntity>
+
+    @Query("SELECT * FROM offline_route_download WHERE routeId = :routeId")
+    suspend fun getOfflineDownload(routeId: Int): OfflineRouteDownloadEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertOfflineDownload(entity: OfflineRouteDownloadEntity)
+
+    @Query("DELETE FROM offline_route_download WHERE routeId = :routeId")
+    suspend fun deleteOfflineDownload(routeId: Int)
+
+    @Query("SELECT * FROM offline_route_graph_cache WHERE routeId = :routeId")
+    suspend fun getOfflineGraph(routeId: Int): OfflineRouteGraphCacheEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertOfflineGraph(entity: OfflineRouteGraphCacheEntity)
+
+    @Query("DELETE FROM offline_route_graph_cache WHERE routeId = :routeId")
+    suspend fun deleteOfflineGraph(routeId: Int)
+
+    @Query("SELECT * FROM offline_route_archive_cache WHERE routeId = :routeId")
+    suspend fun getOfflineArchive(routeId: Int): OfflineRouteArchiveCacheEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertOfflineArchive(entity: OfflineRouteArchiveCacheEntity)
+
+    @Query("DELETE FROM offline_route_archive_cache WHERE routeId = :routeId")
+    suspend fun deleteOfflineArchive(routeId: Int)
+
     @Query("SELECT * FROM route_sync_queue ORDER BY id ASC")
     suspend fun getPendingSyncOperations(): List<RouteSyncQueueEntity>
 

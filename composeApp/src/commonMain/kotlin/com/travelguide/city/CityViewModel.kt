@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+import com.travelguide.core.toUserMessage
 class CityViewModel(
     private val repository: CityRepository
 ) : ViewModel() {
@@ -34,7 +35,7 @@ class CityViewModel(
             }.onFailure { e ->
                 _listState.value = _listState.value.copy(
                     isLoading = false,
-                    errorMessage = e.message ?: "Не удалось загрузить города"
+                    errorMessage = e.toUserMessage("Не удалось загрузить города")
                 )
             }
         }
@@ -60,7 +61,7 @@ class CityViewModel(
             }.onFailure { e ->
                 _listState.value = _listState.value.copy(
                     isLoading = false,
-                    errorMessage = e.message ?: "Ошибка поиска городов"
+                    errorMessage = e.toUserMessage("Ошибка поиска городов")
                 )
             }
         }
@@ -81,7 +82,7 @@ class CityViewModel(
                 _detailsState.value = CityDetailsUiState(
                     isLoading = false,
                     city = null,
-                    errorMessage = e.message ?: "Не удалось загрузить город"
+                    errorMessage = e.toUserMessage("Не удалось загрузить город")
                 )
             }
         }

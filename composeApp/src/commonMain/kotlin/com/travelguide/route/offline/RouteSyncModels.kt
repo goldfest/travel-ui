@@ -5,6 +5,7 @@ import com.travelguide.domain.models.RouteDay
 import com.travelguide.domain.models.RoutePoint
 import com.travelguide.domain.models.RouteStatus
 import com.travelguide.domain.models.TransportMode
+import com.travelguide.network.dto.route.RouteOptimizationRequestDto
 import com.travelguide.route.EditableRouteDayUi
 import com.travelguide.route.EditableRoutePointUi
 import kotlinx.serialization.Serializable
@@ -157,5 +158,5 @@ data class ReorderRouteDaySyncPayload(
 @Serializable
 data class OptimizeRouteSyncPayload(
     val routeId: Int,
-    val mode: String = "distance"
+    val request: RouteOptimizationRequestDto
 )

@@ -20,6 +20,7 @@ import com.travelguide.network.route.RouteApi
 import com.travelguide.network.user.UserApi
 import com.travelguide.personalisation.CollectionRepository
 import com.travelguide.poi.PoiRepository
+import com.travelguide.profile.UserCache
 import com.travelguide.profile.UserRepository
 import com.travelguide.review.ReportRepository
 import com.travelguide.review.ReviewRepository
@@ -30,7 +31,6 @@ import com.travelguide.route.local.RouteSyncScheduler
 import com.travelguide.search.SearchHistoryRepository
 import com.travelguide.session.SessionManager
 
-
 class AppContainer(context: Context) {
 
     val sessionManager = SessionManager()
@@ -38,6 +38,7 @@ class AppContainer(context: Context) {
     private val settings: Settings = SharedPreferencesSettings(
         context.getSharedPreferences("travelguide_settings", Context.MODE_PRIVATE)
     )
+    private val userCache = UserCache(settings)
 
     private val authHostUrl = "http://192.168.1.9:8084"
     private val authApiBaseUrl = "$authHostUrl/api"
@@ -51,10 +52,10 @@ class AppContainer(context: Context) {
     private val httpClient = HttpClientFactory().create(authApiBaseUrl, tokenStorage)
 
     private val authApi = AuthApi(httpClient, authApiBaseUrl)
-    val authRepository = AuthRepository(authApi, tokenStorage)
+    val authRepository = AuthRepository(authApi, tokenStorage, userCache)
 
     private val userApi = UserApi(httpClient, authApiBaseUrl)
-    val userRepository = UserRepository(userApi, authHostUrl)
+    val userRepository = UserRepository(userApi, authHostUrl, userCache)
 
     private val cityApi = CityApi(httpClient, cityBaseUrl)
     val cityRepository = CityRepository(cityApi)
@@ -85,6 +86,7 @@ class AppContainer(context: Context) {
     val routeRepository = RouteRepository(routeApi, poiRepository, routeLocalStore)
 
     init {
+        routeSyncScheduler.ensurePeriodicSync()
         routeSyncScheduler.scheduleNow()
     }
 }

@@ -8,7 +8,8 @@ import com.travelguide.network.user.UserApi
 
 class UserRepository(
     private val api: UserApi,
-    private val hostUrl: String // например: http://10.0.2.2:8084
+    private val hostUrl: String,
+    private val userCache: UserCache? = null
 ) {
     private fun resolveAvatarUrl(raw: String?): String? {
         if (raw.isNullOrBlank()) return null
@@ -31,9 +32,10 @@ class UserRepository(
     }
 
     suspend fun getMe(): User {
-        val it = api.getMe()
-        return mapUser(it)
+        return mapUser(api.getMe()).also { user -> userCache?.save(user) }
     }
+
+    fun getCachedMe(): User? = userCache?.get()
 
     suspend fun updateMe(
         username: String? = null,
@@ -42,17 +44,25 @@ class UserRepository(
         homeCityId: Long? = null,
         preferencesJson: String? = null
     ): User {
-        val it = api.updateMe(
-            UpdateProfileRequestDto(
-                username = username,
-                phone = phone,
-                avatarUrl = avatarUrl,
-                homeCityId = homeCityId,
-                preferencesJson = preferencesJson
+        return mapUser(
+            api.updateMe(
+                UpdateProfileRequestDto(
+                    username = username,
+                    phone = phone,
+                    avatarUrl = avatarUrl,
+                    homeCityId = homeCityId,
+                    preferencesJson = preferencesJson
+                )
             )
-        )
-        return mapUser(it)
+        ).also { user -> userCache?.save(user) }
     }
+
+    fun updateCachedProfile(
+        username: String,
+        phone: String?,
+        avatarUrl: String?,
+        homeCityId: Long?
+    ): User? = userCache?.updateLocalProfile(username, phone, avatarUrl, homeCityId)
 
     suspend fun changePassword(current: String, new: String) {
         api.changePassword(ChangePasswordRequestDto(currentPassword = current, newPassword = new))
@@ -60,11 +70,10 @@ class UserRepository(
 
     suspend fun deleteMe() {
         api.deleteMe()
+        userCache?.clear()
     }
 
-
     suspend fun uploadAvatar(bytes: ByteArray, mimeType: String): User {
-        val it = api.uploadAvatar(bytes, mimeType)
-        return mapUser(it)
+        return mapUser(api.uploadAvatar(bytes, mimeType)).also { user -> userCache?.save(user) }
     }
 }

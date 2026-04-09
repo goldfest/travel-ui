@@ -89,6 +89,22 @@ data class ReorderRouteDayPointsRequestDto(
     val routePointIdsInOrder: List<Long>
 )
 
+
+@Serializable
+data class RouteOptimizationRequestDto(
+    val optimizationMode: String = "TIME_WINDOW",
+    val dayStartTime: String? = null,
+    val dayEndTime: String? = null,
+    val maxTotalMinutesPerDay: Int? = null,
+    val maxPointsPerDay: Int? = null,
+    val maxTravelMinutesBetweenPoints: Int? = null,
+    val allowDroppingPoints: Boolean = true,
+    val keepFirstAndLast: Boolean = true,
+    val orderedRoutePointIds: List<Long> = emptyList(),
+    val considerOpeningHours: Boolean = false,
+    val considerLunchBreak: Boolean = false
+)
+
 @Serializable
 data class GenerateRouteRequestDto(
     val cityId: Long,

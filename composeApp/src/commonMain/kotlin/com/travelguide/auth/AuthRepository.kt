@@ -2,10 +2,12 @@ package com.travelguide.auth
 
 import com.travelguide.domain.models.User
 import com.travelguide.network.auth.AuthApi
+import com.travelguide.profile.UserCache
 
 class AuthRepository(
     private val api: AuthApi,
-    private val storage: TokenStorage
+    private val storage: TokenStorage,
+    private val userCache: UserCache? = null
 ) {
     suspend fun login(email: String, password: String): User? {
         val resp = api.login(email, password)
@@ -23,7 +25,7 @@ class AuthRepository(
                 role = it.role,
                 status = it.status,
                 homeCityId = it.homeCityId
-            )
+            ).also { user -> userCache?.save(user) }
         }
     }
 
@@ -43,7 +45,7 @@ class AuthRepository(
                 role = it.role,
                 status = it.status,
                 homeCityId = it.homeCityId
-            )
+            ).also { user -> userCache?.save(user) }
         }
     }
 
@@ -53,12 +55,12 @@ class AuthRepository(
         try {
             val refresh = storage.refreshToken
             if (!refresh.isNullOrBlank()) {
-                api.logout(refresh)   // вызов backend
+                api.logout(refresh)
             }
-        } catch (e: Exception) {
-            // backend может быть недоступен — это не критично
+        } catch (_: Exception) {
         } finally {
             storage.clear()
+            userCache?.clear()
         }
     }
 }

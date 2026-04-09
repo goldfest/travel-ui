@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+import com.travelguide.core.toUserMessage
 data class EditReviewUiState(
     val isLoading: Boolean = false,
     val review: Review? = null,
@@ -30,7 +31,7 @@ class EditReviewViewModel(
                 _state.value = EditReviewUiState(review = review)
             }.onFailure {
                 _state.value = EditReviewUiState(
-                    error = it.message ?: "Не удалось загрузить отзыв"
+                    error = it.toUserMessage("Не удалось загрузить отзыв")
                 )
             }
         }
@@ -53,7 +54,7 @@ class EditReviewViewModel(
             }.onFailure {
                 _state.value = _state.value.copy(
                     isLoading = false,
-                    error = it.message ?: "Не удалось сохранить отзыв"
+                    error = it.toUserMessage("Не удалось сохранить отзыв")
                 )
             }
         }

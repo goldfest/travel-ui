@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+import com.travelguide.core.toUserMessage
 class CollectionsViewModel(
     private val repository: CollectionRepository
 ) : ViewModel() {
@@ -34,7 +35,7 @@ class CollectionsViewModel(
                 _state.value = CollectionsUiState(
                     isLoading = false,
                     collections = emptyList(),
-                    errorMessage = e.message ?: "Не удалось загрузить коллекции"
+                    errorMessage = e.toUserMessage("Не удалось загрузить коллекции")
                 )
             }
         }
@@ -56,7 +57,7 @@ class CollectionsViewModel(
                 )
             }.onFailure { e ->
                 _state.value = _state.value.copy(
-                    errorMessage = e.message ?: "Не удалось создать коллекцию"
+                    errorMessage = e.toUserMessage("Не удалось создать коллекцию")
                 )
             }
         }
@@ -72,7 +73,7 @@ class CollectionsViewModel(
                 )
             }.onFailure { e ->
                 _state.value = _state.value.copy(
-                    errorMessage = e.message ?: "Не удалось удалить коллекцию"
+                    errorMessage = e.toUserMessage("Не удалось удалить коллекцию")
                 )
             }
         }

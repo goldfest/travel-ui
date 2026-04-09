@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,14 +14,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,26 +32,30 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.*
-
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.travelguide.domain.models.Route
 import com.travelguide.domain.models.RouteStatus
+import com.travelguide.route.RouteListFilter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RouteListScreen(
     routes: List<Route>,
     isLoading: Boolean,
-    showArchived: Boolean,
+    filter: RouteListFilter,
     deletingRouteId: Int?,
     errorMessage: String?,
     onRetry: () -> Unit,
     onBackClick: () -> Unit,
-    onToggleArchived: () -> Unit,
+    onFilterChange: (RouteListFilter) -> Unit,
     onRouteClick: (Int) -> Unit,
     onDeleteRoute: (Int) -> Unit,
     onCreateRoute: (() -> Unit)? = null
@@ -83,106 +89,124 @@ fun RouteListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (showArchived) "Архив маршрутов" else "Мои маршруты") },
+                title = { Text("Маршруты") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onToggleArchived) {
-                        Icon(Icons.Default.Archive, contentDescription = "Переключить архив")
                     }
                 }
             )
         },
         floatingActionButton = {
-            if (!showArchived && onCreateRoute != null) {
+            if (filter != RouteListFilter.ARCHIVED && onCreateRoute != null) {
                 FloatingActionButton(onClick = onCreateRoute) {
                     Icon(Icons.Default.Add, contentDescription = "Создать маршрут")
                 }
             }
         }
     ) { paddingValues ->
-        when {
-            isLoading && routes.isEmpty() -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Загрузка маршрутов…")
-                }
-            }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            RouteFilterBar(
+                selected = filter,
+                onFilterChange = onFilterChange,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+            )
 
-            !errorMessage.isNullOrBlank() && routes.isEmpty() -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(errorMessage, color = MaterialTheme.colorScheme.error)
-                        Button(onClick = onRetry, modifier = Modifier.padding(top = 12.dp)) {
-                            Text("Повторить")
+            when {
+                isLoading && routes.isEmpty() -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Загрузка маршрутов…")
+                    }
+                }
+
+                !errorMessage.isNullOrBlank() && routes.isEmpty() -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(errorMessage, color = MaterialTheme.colorScheme.error)
+                            Button(onClick = onRetry, modifier = Modifier.padding(top = 12.dp)) {
+                                Text("Повторить")
+                            }
                         }
                     }
                 }
-            }
 
-            routes.isEmpty() -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                routes.isEmpty() -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (filter == RouteListFilter.OFFLINE) Icons.Default.DownloadDone else Icons.Default.Route,
+                                contentDescription = null
+                            )
+                            Text(
+                                when (filter) {
+                                    RouteListFilter.ACTIVE -> "У вас еще нет активных маршрутов"
+                                    RouteListFilter.ARCHIVED -> "Архивных маршрутов пока нет"
+                                    RouteListFilter.OFFLINE -> "Нет маршрутов, подготовленных для оффлайн-работы"
+                                }
+                            )
+                            if (filter != RouteListFilter.ARCHIVED && onCreateRoute != null) {
+                                Button(onClick = onCreateRoute) {
+                                    Text("Создать маршрут")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Icon(
-                            Icons.Default.Route,
-                            contentDescription = null,
-                            modifier = Modifier.padding(8.dp)
-                        )
-                        Text(
-                            text = if (showArchived) {
-                                "Архивных маршрутов пока нет"
-                            } else {
-                                "У вас еще нет маршрутов"
-                            }
-                        )
-                        if (!showArchived && onCreateRoute != null) {
-                            Button(onClick = onCreateRoute) {
-                                Text("Создать маршрут")
-                            }
+                        items(routes, key = { it.id }) { route ->
+                            RouteCard(
+                                route = route,
+                                isDeleting = deletingRouteId == route.id,
+                                showOfflineBadge = filter == RouteListFilter.OFFLINE,
+                                onClick = { onRouteClick(route.id) },
+                                onLongClick = { pendingDeleteRoute = route }
+                            )
                         }
-                    }
-                }
-            }
-
-            else -> {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(routes, key = { it.id }) { route ->
-                        RouteCard(
-                            route = route,
-                            isDeleting = deletingRouteId == route.id,
-                            onClick = { onRouteClick(route.id) },
-                            onLongClick = { pendingDeleteRoute = route }
-                        )
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun RouteFilterBar(
+    selected: RouteListFilter,
+    onFilterChange: (RouteListFilter) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        FilterChip(
+            selected = selected == RouteListFilter.ACTIVE,
+            onClick = { onFilterChange(RouteListFilter.ACTIVE) },
+            label = { Text("Активные") }
+        )
+        FilterChip(
+            selected = selected == RouteListFilter.ARCHIVED,
+            onClick = { onFilterChange(RouteListFilter.ARCHIVED) },
+            label = { Text("Архив") }
+        )
+        FilterChip(
+            selected = selected == RouteListFilter.OFFLINE,
+            onClick = { onFilterChange(RouteListFilter.OFFLINE) },
+            label = { Text("Оффлайн") }
+        )
     }
 }
 
@@ -191,16 +215,14 @@ fun RouteListScreen(
 fun RouteCard(
     route: Route,
     isDeleting: Boolean,
+    showOfflineBadge: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            )
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -218,13 +240,11 @@ fun RouteCard(
                 )
             }
 
-            Surface(
-                modifier = Modifier.padding(top = 8.dp)
-            ) {
-                Text(
-                    text = route.status.label(),
-                    style = MaterialTheme.typography.labelMedium
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
+                Surface { Text(text = route.status.label(), style = MaterialTheme.typography.labelMedium) }
+                if (showOfflineBadge) {
+                    Surface { Text(text = "Оффлайн", style = MaterialTheme.typography.labelMedium) }
+                }
             }
 
             if (route.status == RouteStatus.GRAPH_PREPARING) {
@@ -265,21 +285,20 @@ fun RouteCard(
 
 @Composable
 private fun RowDeleteHint() {
-    Surface(
+    Row(
         modifier = Modifier.padding(top = 8.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        shape = MaterialTheme.shapes.medium
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        androidx.compose.foundation.layout.Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.Default.Delete, contentDescription = null)
-            Text(
-                text = "Удерживайте для удаления",
-                style = MaterialTheme.typography.labelSmall
-            )
-        }
+        Icon(
+            Icons.Default.Delete,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = "Удерживайте для удаления",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

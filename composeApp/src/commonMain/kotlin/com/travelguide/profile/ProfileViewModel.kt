@@ -3,6 +3,7 @@ package com.travelguide.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.travelguide.auth.AuthRepository
+import com.travelguide.core.toUserMessage
 import com.travelguide.network.UnauthorizedException
 import com.travelguide.session.SessionManager
 import com.travelguide.ui.UiEvent
@@ -35,15 +36,9 @@ class ProfileViewModel(
         _events.send(UiEvent.Snackbar(msg))
     }
 
-    /**
-     * Вызывай при входе на экран профиля:
-     * - один раз
-     * - или при pull-to-refresh
-     */
     fun loadMe(force: Boolean = false) {
         val s = _state.value
-        if (s.isLoggingOut) return
-        if (s.isLoading) return
+        if (s.isLoggingOut || s.isLoading) return
         if (!force && s.hasLoadedOnce && s.user != null) return
 
         loadJob?.cancel()
@@ -53,38 +48,32 @@ class ProfileViewModel(
             try {
                 val me = userRepo.getMe()
                 _state.update {
-                    it.copy(
-                        isLoading = false,
-                        user = me,
-                        error = null,
-                        hasLoadedOnce = true
-                    )
+                    it.copy(isLoading = false, user = me, error = null, hasLoadedOnce = true)
                 }
             } catch (e: UnauthorizedException) {
-                // если уже выходим — молча игнорируем
                 if (_state.value.isLoggingOut) return@launch
-
-                // не показываем "ошибка загрузки", потому что это просто неавторизован
-                _state.update {
-                    it.copy(
-                        isLoading = false,
-                        user = null,
-                        error = null,
-                        hasLoadedOnce = true
-                    )
-                }
-
-                // здесь нормально переводить на авторизацию
+                _state.update { it.copy(isLoading = false, user = null, error = null, hasLoadedOnce = true) }
                 authRepo.logout()
                 sessionManager.unauthorized()
             } catch (e: Exception) {
-                if (_state.value.isLoggingOut) return@launch
-                _state.update {
-                    it.copy(
-                        isLoading = false,
-                        error = e.message ?: "Load profile error",
-                        hasLoadedOnce = true
-                    )
+                val cached = userRepo.getCachedMe()
+                if (cached != null) {
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            user = cached,
+                            error = "Проверьте подключение к интернету.",
+                            hasLoadedOnce = true
+                        )
+                    }
+                } else {
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            error = e.toUserMessage(),
+                            hasLoadedOnce = true
+                        )
+                    }
                 }
             }
         }
@@ -99,8 +88,7 @@ class ProfileViewModel(
         homeCityId: Long?,
         onSuccess: () -> Unit
     ) {
-        if (_state.value.isLoggingOut) return
-        if (_state.value.user == null) return
+        if (_state.value.isLoggingOut || _state.value.user == null) return
 
         _editState.update { it.copy(isSaving = true, error = null) }
 
@@ -116,22 +104,26 @@ class ProfileViewModel(
                 _editState.update { it.copy(isSaving = false, error = null) }
                 onSuccess()
             } catch (e: UnauthorizedException) {
-                // при 401 не показываем "ошибка сохранения", просто уходим в auth
                 _editState.update { it.copy(isSaving = false, error = null) }
                 authRepo.logout()
                 sessionManager.unauthorized()
             } catch (e: Exception) {
-                _editState.update { it.copy(isSaving = false, error = e.message ?: "Save error") }
+                val updatedLocal = userRepo.updateCachedProfile(username, phone, avatarUrl, homeCityId)
+                if (updatedLocal != null) {
+                    _state.update { it.copy(user = updatedLocal) }
+                    _editState.update { it.copy(isSaving = false, error = null) }
+                    snack("Изменения сохранены локально")
+                    onSuccess()
+                } else {
+                    _editState.update { it.copy(isSaving = false, error = e.toUserMessage()) }
+                }
             }
         }
     }
 
     fun logout(onDone: () -> Unit) {
-        // важно: сразу гасим любые загрузки/ошибки, чтобы UI не успел моргнуть
         _state.update { it.copy(isLoggingOut = true, error = null, isLoading = false) }
         _editState.update { it.copy(isSaving = false, error = null) }
-
-        // отменяем активную загрузку профиля
         loadJob?.cancel()
         loadJob = null
 
@@ -139,7 +131,6 @@ class ProfileViewModel(
             try {
                 authRepo.logout()
             } finally {
-                // чистим стейты и уходим
                 _state.value = ProfileUiState(isLoggingOut = true, hasLoadedOnce = true)
                 _editState.value = com.travelguide.ui.screens.profile.EditProfileUiState()
                 onDone()
@@ -147,11 +138,7 @@ class ProfileViewModel(
         }
     }
 
-    fun changePassword(
-        current: String,
-        new: String,
-        onSuccess: () -> Unit
-    ) {
+    fun changePassword(current: String, new: String, onSuccess: () -> Unit) {
         if (_state.value.isLoggingOut) return
 
         viewModelScope.launch {
@@ -167,7 +154,7 @@ class ProfileViewModel(
                 sessionManager.unauthorized()
             } catch (e: Exception) {
                 _editState.update { it.copy(isSaving = false) }
-                snack(e.message ?: "Ошибка смены пароля")
+                snack(e.toUserMessage())
             }
         }
     }
@@ -189,7 +176,7 @@ class ProfileViewModel(
                 sessionManager.unauthorized()
             } catch (e: Exception) {
                 _editState.update { it.copy(isSaving = false) }
-                snack(e.message ?: "Ошибка удаления аккаунта")
+                snack(e.toUserMessage())
             }
         }
     }
@@ -210,7 +197,7 @@ class ProfileViewModel(
                 sessionManager.unauthorized()
             } catch (e: Exception) {
                 _editState.update { it.copy(isSaving = false) }
-                snack(e.message ?: "Ошибка загрузки аватара")
+                snack(e.toUserMessage("Загрузка аватара недоступна без интернета."))
             }
         }
     }

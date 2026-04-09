@@ -9,8 +9,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.travelguide.AppContainer
+import com.travelguide.core.toUserMessage
 import com.travelguide.ui.screens.route.RouteDetailScreen
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun RouteDetailRoute(
@@ -37,6 +40,10 @@ fun RouteDetailRoute(
         vm.loadRoute(routeId)
     }
 
+    fun toast(message: String) {
+        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+    }
+
     RouteDetailScreen(
         route = state.route,
         isLoading = state.isLoading,
@@ -46,28 +53,28 @@ fun RouteDetailRoute(
         onEditClick = onEditClick,
         onViewMap = onViewMap,
         onViewList = onViewList,
-        onOptimizeClick = { vm.optimize(routeId) },
+        onOptimizeClick = { form -> vm.optimize(routeId, form) },
         onDownloadOfflineClick = {
             scope.launch {
                 runCatching {
-                    val bytes = container.routeRepository.downloadOfflineRoute(routeId)
-                    RouteFileSaver.saveToDownloads(
-                        context = context,
-                        fileName = "route_${routeId}_offline.zip",
-                        mimeType = "application/zip",
-                        bytes = bytes
-                    )
+                    container.routeRepository.saveRouteOffline(routeId)
                 }.onSuccess {
-                    Toast.makeText(context, "Оффлайн-архив сохранён в Downloads/TravelGuide", Toast.LENGTH_LONG).show()
+                    toast("Маршрут сохранён для офлайн-доступа")
+                    vm.loadRoute(routeId)
                 }.onFailure {
-                    Toast.makeText(context, it.message ?: "Не удалось сохранить оффлайн-архив", Toast.LENGTH_LONG).show()
+                    toast(it.toUserMessage("Не удалось подготовить маршрут для офлайн-доступа"))
                 }
             }
         },
         onExportPdfClick = {
             scope.launch {
                 runCatching {
-                    val bytes = container.routeRepository.exportRoutePdf(routeId)
+                    val route = state.route ?: container.routeRepository.getRouteById(routeId)
+                    val routeMap = container.routeRepository.getRouteMap(routeId)
+                    val mapBitmap = withContext(Dispatchers.Default) {
+                        routeMap.days.firstOrNull()?.let { RouteMapSnapshotRenderer(context).render(it) }
+                    }
+                    val bytes = RoutePdfExporter(context).export(route, routeMap, mapBitmap)
                     RouteFileSaver.saveToDownloads(
                         context = context,
                         fileName = "route_${routeId}.pdf",
@@ -75,9 +82,9 @@ fun RouteDetailRoute(
                         bytes = bytes
                     )
                 }.onSuccess {
-                    Toast.makeText(context, "PDF сохранён в Downloads/TravelGuide", Toast.LENGTH_LONG).show()
+                    toast("PDF сохранён в Downloads/TravelGuide")
                 }.onFailure {
-                    Toast.makeText(context, it.message ?: "Не удалось экспортировать PDF", Toast.LENGTH_LONG).show()
+                    toast(it.toUserMessage("Не удалось экспортировать PDF"))
                 }
             }
         },
@@ -92,9 +99,9 @@ fun RouteDetailRoute(
                         bytes = bytes
                     )
                 }.onSuccess {
-                    Toast.makeText(context, "GPX сохранён в Downloads/TravelGuide", Toast.LENGTH_LONG).show()
+                    toast("GPX сохранён в Downloads/TravelGuide")
                 }.onFailure {
-                    Toast.makeText(context, it.message ?: "Не удалось экспортировать GPX", Toast.LENGTH_LONG).show()
+                    toast(it.toUserMessage("Не удалось экспортировать GPX"))
                 }
             }
         },
@@ -109,9 +116,27 @@ fun RouteDetailRoute(
                         bytes = bytes
                     )
                 }.onSuccess {
-                    Toast.makeText(context, "JSON сохранён в Downloads/TravelGuide", Toast.LENGTH_LONG).show()
+                    toast("JSON сохранён в Downloads/TravelGuide")
                 }.onFailure {
-                    Toast.makeText(context, it.message ?: "Не удалось экспортировать JSON", Toast.LENGTH_LONG).show()
+                    toast(it.toUserMessage("Не удалось экспортировать JSON"))
+                }
+            }
+        },
+        onExportOfflineArchiveClick = {
+            scope.launch {
+                runCatching {
+                    val local = container.routeRepository.getOfflineArchive(routeId)
+                    val bytes = local ?: container.routeRepository.downloadOfflineRoute(routeId)
+                    RouteFileSaver.saveToDownloads(
+                        context = context,
+                        fileName = "route_${routeId}_offline.zip",
+                        mimeType = "application/zip",
+                        bytes = bytes
+                    )
+                }.onSuccess {
+                    toast("Офлайн-архив сохранён в Downloads/TravelGuide")
+                }.onFailure {
+                    toast(it.toUserMessage("Не удалось экспортировать офлайн-архив"))
                 }
             }
         }

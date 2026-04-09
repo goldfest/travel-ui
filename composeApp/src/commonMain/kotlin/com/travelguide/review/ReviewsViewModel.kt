@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+import com.travelguide.core.toUserMessage
 data class ReviewsUiState(
     val isLoading: Boolean = false,
     val reviews: List<Review> = emptyList(),
@@ -37,7 +38,7 @@ class ReviewsViewModel(
             }.onFailure {
                 _state.value = ReviewsUiState(
                     isLoading = false,
-                    error = it.message ?: "Не удалось загрузить отзывы"
+                    error = it.toUserMessage("Не удалось загрузить отзывы")
                 )
             }
         }
