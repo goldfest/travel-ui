@@ -5,6 +5,7 @@ import com.travelguide.domain.models.Route
 import com.travelguide.domain.models.RouteMap
 import com.travelguide.route.offline.PendingRouteSyncOperation
 import com.travelguide.route.offline.RouteLocalStore
+import kotlinx.coroutines.flow.Flow
 
 class RouteLocalStoreImpl(
     private val dao: RouteCacheDao
@@ -173,4 +174,8 @@ class RouteLocalStoreImpl(
             enqueue(operation)
         }
     }
+
+    override suspend fun hasPendingSync(routeId: Int): Boolean = dao.hasPendingSync(routeId)
+
+    override fun observePendingSync(routeId: Int): Flow<Boolean> = dao.observeHasPendingSync(routeId)
 }

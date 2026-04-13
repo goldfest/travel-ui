@@ -51,5 +51,6 @@ data class RouteEditorUiState(
     val selectedDayNumber: Int = 1,
 
     val errorMessage: String? = null,
+    val syncNoticeMessage: String? = null,
     val savedRouteId: Int? = null
 )

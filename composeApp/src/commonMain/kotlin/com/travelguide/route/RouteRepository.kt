@@ -43,6 +43,8 @@ import com.travelguide.network.dto.route.RouteOptimizationSummaryDto
 import com.travelguide.network.dto.route.RouteUnscheduledPointDto
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 private val routeResponseJson = Json {
     ignoreUnknownKeys = true
     encodeDefaults = true
@@ -51,7 +53,8 @@ class RouteRepository(
     private val api: RouteApi,
     private val poiRepository: PoiRepository,
     private val localStore: RouteLocalStore? = null,
-    private val json: Json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    private val json: Json = Json { ignoreUnknownKeys = true; encodeDefaults = true },
+    private val onPendingSyncScheduled: (() -> Unit)? = null
 ) {
 
     suspend fun isCityGraphReady(cityId: Int): Boolean {
@@ -68,6 +71,14 @@ class RouteRepository(
 
     suspend fun isRouteOffline(routeId: Int): Boolean {
         return localStore?.isRouteOffline(routeId) == true
+    }
+
+    suspend fun hasPendingSync(routeId: Int): Boolean {
+        return localStore?.hasPendingSync(routeId) == true
+    }
+
+    fun observePendingSync(routeId: Int): Flow<Boolean> {
+        return localStore?.observePendingSync(routeId) ?: flowOf(false)
     }
 
     suspend fun saveRouteOffline(routeId: Int): Route {
@@ -241,6 +252,7 @@ class RouteRepository(
                     )
                 )
             )
+            onPendingSyncScheduled?.invoke()
             localRoute
         }
     }
@@ -507,6 +519,7 @@ class RouteRepository(
         } else {
             store.enqueue(operation)
         }
+        onPendingSyncScheduled?.invoke()
     }
     suspend fun getOfflineRouteById(routeId: Int): Route {
         return localStore?.getRoute(routeId)

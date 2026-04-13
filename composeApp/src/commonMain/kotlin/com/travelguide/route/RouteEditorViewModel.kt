@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 import com.travelguide.core.toUserMessage
 class RouteEditorViewModel(
@@ -23,6 +25,7 @@ class RouteEditorViewModel(
     val state: StateFlow<RouteEditorUiState> = _state.asStateFlow()
 
     private var originalRoute: Route? = null
+    private var pendingSyncJob: Job? = null
 
     fun startCreate(cityId: Int?, initialPoiId: Int?) {
         viewModelScope.launch {
@@ -46,7 +49,8 @@ class RouteEditorViewModel(
                     selectedCityName = selectedCity?.displayName().orEmpty(),
                     availablePois = pois,
                     filteredPois = filterPois(pois, _state.value.searchQuery),
-                    errorMessage = null
+                    errorMessage = null,
+                    syncNoticeMessage = null
                 )
 
                 selectedCity?.id?.let { refreshGraphState(it) }
@@ -116,8 +120,11 @@ class RouteEditorViewModel(
                     selectedDayNumber = mappedDays.first().dayNumber,
                     isGraphReady = true,
                     isGraphLoading = false,
-                    errorMessage = null
+                    errorMessage = null,
+                    syncNoticeMessage = null
                 )
+
+                observePendingSync(data.route.id)
             }.onFailure { e ->
                 _state.value = _state.value.copy(
                     isLoading = false,
@@ -172,7 +179,8 @@ class RouteEditorViewModel(
                     isGraphLoading = true,
                     isGraphDownloadInProgress = false,
                     graphMessage = null,
-                    errorMessage = null
+                    errorMessage = null,
+                    syncNoticeMessage = null
                 )
                 refreshGraphState(city.id)
             }.onFailure { e ->
@@ -376,7 +384,7 @@ class RouteEditorViewModel(
         }
 
         viewModelScope.launch {
-            _state.value = current.copy(isSaving = true, errorMessage = null)
+            _state.value = current.copy(isSaving = true, errorMessage = null, syncNoticeMessage = null)
 
             runCatching {
                 when (current.mode) {
@@ -398,14 +406,37 @@ class RouteEditorViewModel(
                 _state.value = _state.value.copy(
                     isSaving = false,
                     savedRouteId = route.id,
-                    errorMessage = null
+                    errorMessage = null,
+                    syncNoticeMessage = if (route.id < 0) {
+                        "Маршрут сохранён локально. Он будет создан на сервере автоматически после появления интернета."
+                    } else {
+                        "Изменения сохранены. При отсутствии сети они будут автоматически отправлены на сервер после восстановления соединения."
+                    }
                 )
+
+                observePendingSync(route.id)
             }.onFailure { e ->
                 _state.value = _state.value.copy(
                     isSaving = false,
                     errorMessage = e.toUserMessage("Не удалось сохранить маршрут")
                 )
             }
+        }
+    }
+
+    private fun observePendingSync(routeId: Int) {
+        pendingSyncJob?.cancel()
+        pendingSyncJob = viewModelScope.launch {
+            routeRepository.observePendingSync(routeId)
+                .distinctUntilChanged()
+                .collect { hasPending ->
+                    val message = when {
+                        hasPending && routeId < 0 -> "Маршрут сохранён локально. Он будет создан на сервере автоматически после появления интернета."
+                        hasPending -> "Есть несинхронизированные изменения. Они будут отправлены автоматически после появления сети."
+                        else -> null
+                    }
+                    _state.value = _state.value.copy(syncNoticeMessage = message)
+                }
         }
     }
 

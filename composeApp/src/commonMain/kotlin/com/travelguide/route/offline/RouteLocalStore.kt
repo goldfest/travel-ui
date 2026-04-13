@@ -3,6 +3,7 @@ package com.travelguide.route.offline
 import com.travelguide.domain.models.POI
 import com.travelguide.domain.models.Route
 import com.travelguide.domain.models.RouteMap
+import kotlinx.coroutines.flow.Flow
 
 interface RouteLocalStore {
     suspend fun getRoutes(archived: Boolean): List<Route>
@@ -29,4 +30,6 @@ interface RouteLocalStore {
 
     suspend fun enqueue(operation: PendingRouteSyncOperation)
     suspend fun replacePendingCreate(operation: PendingRouteSyncOperation)
+    suspend fun hasPendingSync(routeId: Int): Boolean
+    fun observePendingSync(routeId: Int): Flow<Boolean>
 }

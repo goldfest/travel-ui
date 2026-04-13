@@ -88,7 +88,12 @@ class AppContainer(context: Context) {
     private val notificationPollScheduler = NotificationPollScheduler(context)
 
     private val routeApi = RouteApi(httpClient, routeBaseUrl)
-    val routeRepository = RouteRepository(routeApi, poiRepository, routeLocalStore)
+    val routeRepository = RouteRepository(
+        api = routeApi,
+        poiRepository = poiRepository,
+        localStore = routeLocalStore,
+        onPendingSyncScheduled = routeSyncScheduler::scheduleNow
+    )
 
     private val notificationApi = NotificationApi(httpClient, notificationBaseUrl)
     val notificationRepository = NotificationRepository(notificationApi)

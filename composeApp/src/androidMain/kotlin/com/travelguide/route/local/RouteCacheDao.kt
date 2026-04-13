@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface RouteCacheDao {
@@ -81,4 +82,10 @@ interface RouteCacheDao {
 
     @Query("UPDATE route_sync_queue SET routeId = :newRouteId WHERE routeId = :oldRouteId")
     suspend fun rebindQueuedRouteId(oldRouteId: Int, newRouteId: Int)
+
+    @Query("SELECT EXISTS(SELECT 1 FROM route_sync_queue WHERE routeId = :routeId)")
+    suspend fun hasPendingSync(routeId: Int): Boolean
+
+    @Query("SELECT EXISTS(SELECT 1 FROM route_sync_queue WHERE routeId = :routeId)")
+    fun observeHasPendingSync(routeId: Int): Flow<Boolean>
 }

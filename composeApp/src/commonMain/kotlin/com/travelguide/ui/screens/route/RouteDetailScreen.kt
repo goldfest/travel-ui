@@ -109,10 +109,8 @@ fun RouteDetailScreen(
                     }
                 },
                 actions = {
-                    if (!isOfflineMode) {
-                        IconButton(onClick = onEditClick, enabled = route != null) {
-                            Icon(Icons.Default.Edit, contentDescription = "Редактировать")
-                        }
+                    IconButton(onClick = onEditClick, enabled = route != null) {
+                        Icon(Icons.Default.Edit, contentDescription = "Редактировать")
                     }
                     IconButton(onClick = onViewMap, enabled = route != null && route.status != RouteStatus.GRAPH_PREPARING) {
                         Icon(Icons.Default.Map, contentDescription = "Карта")
@@ -205,20 +203,7 @@ fun RouteDetailScreen(
                 }
             )
         }
-        if (isOfflineMode) {
-            Surface(
-                modifier = Modifier.padding(top = 12.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                shape = MaterialTheme.shapes.large
-            ) {
-                Text(
-                    text = "Оффлайн-копия маршрута. Редактирование и оптимизация недоступны.",
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-            }
-        }
+
 
         when {
             isLoading && route == null -> {
@@ -256,6 +241,25 @@ fun RouteDetailScreen(
                         .padding(paddingValues),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    if (isOfflineMode) {
+                        item {
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                shape = MaterialTheme.shapes.large
+                            ) {
+                                Text(
+                                    text = "Оффлайн-копия маршрута. Изменения можно вносить без интернета — они будут автоматически отправлены на сервер после появления сети.",
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                        }
+                    }
+
                     item {
                         RouteHeroSection(
                             route = route,

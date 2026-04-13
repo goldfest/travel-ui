@@ -250,6 +250,7 @@ fun AppNavHost(
                 container = container,
                 routeId = routeId,
                 onBackClick = { navController.popBackStack() },
+                onEditClick = { navController.navigate("routeEditor/edit/$routeId") },
                 onViewMap = { navController.navigate("routeMap/$routeId") }
             )
         }

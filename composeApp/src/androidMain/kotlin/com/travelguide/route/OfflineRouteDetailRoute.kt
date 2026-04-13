@@ -13,6 +13,7 @@ fun OfflineRouteDetailRoute(
     container: AppContainer,
     routeId: Int,
     onBackClick: () -> Unit,
+    onEditClick: () -> Unit,
     onViewMap: () -> Unit
 ) {
     val vm: RouteDetailViewModel = viewModel(
@@ -36,7 +37,7 @@ fun OfflineRouteDetailRoute(
         isOfflineAvailable = true,
         onRetry = { vm.loadOfflineRoute(routeId) },
         onBackClick = onBackClick,
-        onEditClick = {},
+        onEditClick = onEditClick,
         onViewMap = onViewMap,
         onViewList = {},
         onOptimizeClick = {},

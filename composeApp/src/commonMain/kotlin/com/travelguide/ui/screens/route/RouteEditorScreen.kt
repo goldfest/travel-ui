@@ -73,6 +73,7 @@ fun RouteEditorScreen(
     isLoading: Boolean,
     isSaving: Boolean,
     errorMessage: String?,
+    syncNoticeMessage: String?,
     onBackClick: () -> Unit,
     onCitySelected: (Int) -> Unit,
     onDownloadGraphClick: () -> Unit,
@@ -136,11 +137,30 @@ fun RouteEditorScreen(
             contentPadding = PaddingValues(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            if (!syncNoticeMessage.isNullOrBlank()) {
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    ) {
+                        Text(
+                            text = syncNoticeMessage,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
+            }
+
             item {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(horizontal = 16.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         if (mode == RouteEditorMode.CREATE) {

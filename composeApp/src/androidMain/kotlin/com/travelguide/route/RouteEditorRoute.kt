@@ -60,6 +60,7 @@ fun RouteEditorRoute(
         isLoading = state.isLoading,
         isSaving = state.isSaving,
         errorMessage = state.errorMessage,
+        syncNoticeMessage = state.syncNoticeMessage,
         onBackClick = onBackClick,
         onCitySelected = vm::onCitySelected,
         onDownloadGraphClick = vm::downloadGraphForSelectedCity,
