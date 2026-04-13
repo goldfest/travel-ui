@@ -24,6 +24,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.LocationOff
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
@@ -73,7 +74,8 @@ fun CityInfoScreen(
     onRetryPois: () -> Unit,
     onPOIClick: (Int) -> Unit,
     onToggleFavorite: (Int) -> Unit,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onOpenCityMap: () -> Unit,
 ) {
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
@@ -267,6 +269,18 @@ fun CityInfoScreen(
                                         label = "Популярный"
                                     )
                                 }
+                            }
+                            Button(
+                                onClick = onOpenCityMap,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Map,
+                                    contentDescription = null
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Открыть карту объектов города")
                             }
                         }
                     }

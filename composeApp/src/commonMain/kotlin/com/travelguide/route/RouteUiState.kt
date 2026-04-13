@@ -22,7 +22,8 @@ data class RouteDetailUiState(
     val isLoading: Boolean = false,
     val route: Route? = null,
     val isOfflineAvailable: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val isOfflineMode: Boolean = false
 )
 
 data class CreateRouteUiState(

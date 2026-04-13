@@ -58,29 +58,74 @@ fun RouteListScreen(
     onFilterChange: (RouteListFilter) -> Unit,
     onRouteClick: (Int) -> Unit,
     onDeleteRoute: (Int) -> Unit,
-    onCreateRoute: (() -> Unit)? = null
+    onArchiveRoute: (Int) -> Unit,
+    onUnarchiveRoute: (Int) -> Unit,
+    onCreateRoute: (() -> Unit)? = null,
 ) {
     var pendingDeleteRoute by remember { mutableStateOf<Route?>(null) }
 
     pendingDeleteRoute?.let { route ->
         AlertDialog(
             onDismissRequest = { pendingDeleteRoute = null },
-            title = { Text("Удалить маршрут?") },
-            text = { Text("Маршрут «${route.name}» будет удалён без возможности восстановления.") },
+            title = {
+                Text(
+                    when (filter) {
+                        RouteListFilter.ACTIVE -> "Действия с маршрутом"
+                        RouteListFilter.ARCHIVED -> "Архивный маршрут"
+                        RouteListFilter.OFFLINE -> "Оффлайн-маршрут"
+                    }
+                )
+            },
+            text = {
+                Text(
+                    when (filter) {
+                        RouteListFilter.ACTIVE -> "Маршрут «${route.name}» можно переместить в архив или удалить окончательно."
+                        RouteListFilter.ARCHIVED -> "Маршрут «${route.name}» можно вернуть из архива или удалить окончательно."
+                        RouteListFilter.OFFLINE -> "Маршрут «${route.name}» будет удалён только с устройства. На сервере он останется без изменений."
+                    }
+                )
+            },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        pendingDeleteRoute = null
-                        onDeleteRoute(route.id)
-                    },
-                    enabled = deletingRouteId == null
-                ) {
-                    Text("Удалить")
+                when (filter) {
+                    RouteListFilter.ACTIVE -> TextButton(
+                        onClick = {
+                            pendingDeleteRoute = null
+                            onArchiveRoute(route.id)
+                        }
+                    ) { Text("В архив") }
+
+                    RouteListFilter.ARCHIVED -> TextButton(
+                        onClick = {
+                            pendingDeleteRoute = null
+                            onUnarchiveRoute(route.id)
+                        }
+                    ) { Text("Вернуть") }
+
+                    RouteListFilter.OFFLINE -> TextButton(
+                        onClick = {
+                            pendingDeleteRoute = null
+                            onDeleteRoute(route.id)
+                        },
+                        enabled = deletingRouteId == null
+                    ) { Text("Удалить с устройства") }
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendingDeleteRoute = null }) {
-                    Text("Отмена")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (filter != RouteListFilter.OFFLINE) {
+                        TextButton(
+                            onClick = {
+                                pendingDeleteRoute = null
+                                onDeleteRoute(route.id)
+                            },
+                            enabled = deletingRouteId == null
+                        ) {
+                            Text("Удалить")
+                        }
+                    }
+                    TextButton(onClick = { pendingDeleteRoute = null }) {
+                        Text("Отмена")
+                    }
                 }
             }
         )

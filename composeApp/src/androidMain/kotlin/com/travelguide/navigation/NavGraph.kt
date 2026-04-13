@@ -10,6 +10,7 @@ import com.travelguide.auth.LoginRoute
 import com.travelguide.auth.RegisterRoute
 import com.travelguide.city.CityInfoRoute
 import com.travelguide.city.CityListRoute
+import com.travelguide.city.CityPoiMapRoute
 import com.travelguide.favorite.FavoritesRoute
 import com.travelguide.notification.NotificationsRoute
 import com.travelguide.personalisation.CollectionEditRoute
@@ -25,8 +26,10 @@ import com.travelguide.review.CreateReviewRoute
 import com.travelguide.review.EditReviewRoute
 import com.travelguide.review.MyReviewsRoute
 import com.travelguide.review.ReviewsRoute
+import com.travelguide.route.OfflineRouteDetailRoute
 import com.travelguide.route.RouteDetailRoute
 import com.travelguide.route.RouteEditorRoute
+import com.travelguide.route.RouteListFilter
 import com.travelguide.route.RouteListRoute
 import com.travelguide.route.RouteMapRoute
 import com.travelguide.route.SelectRouteForPoiRoute
@@ -103,7 +106,19 @@ fun AppNavHost(
                 container = container,
                 cityId = cityId,
                 onPOIClick = { poiId -> navController.navigate("poiDetail/$poiId") },
+                onOpenCityMap = { selectedCityId -> navController.navigate("cityPoiMap/$selectedCityId") },
                 onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        composable("cityPoiMap/{cityId}") { backStackEntry ->
+            val cityId = backStackEntry.arguments?.getString("cityId")?.toIntOrNull() ?: 1
+
+            CityPoiMapRoute(
+                container = container,
+                cityId = cityId,
+                onBackClick = { navController.popBackStack() },
+                onOpenPoi = { poiId -> navController.navigate("poiDetail/$poiId") }
             )
         }
 
@@ -217,8 +232,25 @@ fun AppNavHost(
             RouteListRoute(
                 container = container,
                 onBackClick = { navController.popBackStack() },
-                onRouteClick = { routeId -> navController.navigate("routeDetail/$routeId") },
+                onRouteClick = { routeId, filter ->
+                    if (filter == RouteListFilter.OFFLINE) {
+                        navController.navigate("offlineRouteDetail/$routeId")
+                    } else {
+                        navController.navigate("routeDetail/$routeId")
+                    }
+                },
                 onCreateRoute = { navController.navigate("routeEditor?cityId=&poiId=") }
+            )
+        }
+
+        composable("offlineRouteDetail/{routeId}") { backStackEntry ->
+            val routeId = backStackEntry.arguments?.getString("routeId")?.toIntOrNull() ?: 1
+
+            OfflineRouteDetailRoute(
+                container = container,
+                routeId = routeId,
+                onBackClick = { navController.popBackStack() },
+                onViewMap = { navController.navigate("routeMap/$routeId") }
             )
         }
 

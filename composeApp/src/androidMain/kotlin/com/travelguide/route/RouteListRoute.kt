@@ -12,7 +12,7 @@ import com.travelguide.ui.screens.route.RouteListScreen
 fun RouteListRoute(
     container: AppContainer,
     onBackClick: () -> Unit,
-    onRouteClick: (Int) -> Unit,
+    onRouteClick: (Int, RouteListFilter) -> Unit,
     onCreateRoute: () -> Unit
 ) {
     val vm: RouteListViewModel = viewModel(
@@ -37,8 +37,10 @@ fun RouteListRoute(
         onRetry = { vm.loadRoutes(state.filter) },
         onBackClick = onBackClick,
         onFilterChange = vm::setFilter,
-        onRouteClick = onRouteClick,
+        onRouteClick = { routeId -> onRouteClick(routeId, state.filter) },
         onDeleteRoute = vm::deleteRoute,
+        onArchiveRoute = vm::archiveRoute,
+        onUnarchiveRoute = vm::unarchiveRoute,
         onCreateRoute = onCreateRoute
     )
 }

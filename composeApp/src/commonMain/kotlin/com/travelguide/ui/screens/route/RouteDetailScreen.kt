@@ -66,7 +66,7 @@ private data class ScheduledVisitUi(
     val routeDate: String?,
     val pointName: String,
     val arrivalAt: String,
-    val departureAt: String
+    val departureAt: String,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -85,10 +85,13 @@ fun RouteDetailScreen(
     onExportPdfClick: () -> Unit,
     onExportGpxClick: () -> Unit,
     onExportJsonClick: () -> Unit,
-    onExportOfflineArchiveClick: () -> Unit
+    onExportOfflineArchiveClick: () -> Unit,
+    isOfflineMode: Boolean = false,
+    isOfflineAvailable: Boolean = false,
 ) {
     var exportMenuExpanded by remember { mutableStateOf(false) }
     var optimizeDialogExpanded by remember { mutableStateOf(false) }
+
 
     Scaffold(
         topBar = {
@@ -106,8 +109,10 @@ fun RouteDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onEditClick, enabled = route != null) {
-                        Icon(Icons.Default.Edit, contentDescription = "Редактировать")
+                    if (!isOfflineMode) {
+                        IconButton(onClick = onEditClick, enabled = route != null) {
+                            Icon(Icons.Default.Edit, contentDescription = "Редактировать")
+                        }
                     }
                     IconButton(onClick = onViewMap, enabled = route != null && route.status != RouteStatus.GRAPH_PREPARING) {
                         Icon(Icons.Default.Map, contentDescription = "Карта")
@@ -116,7 +121,7 @@ fun RouteDetailScreen(
             )
         },
         bottomBar = {
-            if (route != null) {
+            if (route != null && !isOfflineMode) {
                 BottomAppBar {
                     Row(
                         modifier = Modifier
@@ -200,6 +205,20 @@ fun RouteDetailScreen(
                 }
             )
         }
+        if (isOfflineMode) {
+            Surface(
+                modifier = Modifier.padding(top = 12.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                shape = MaterialTheme.shapes.large
+            ) {
+                Text(
+                    text = "Оффлайн-копия маршрута. Редактирование и оптимизация недоступны.",
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+        }
 
         when {
             isLoading && route == null -> {
@@ -228,6 +247,7 @@ fun RouteDetailScreen(
                     }
                 }
             }
+
 
             route != null -> {
                 LazyColumn(
@@ -275,6 +295,7 @@ fun RouteDetailScreen(
                             modifier = Modifier.padding(horizontal = 16.dp)
                         )
                     }
+
 
                     if (route.isOptimized || route.optimizationSummary != null) {
                         item {

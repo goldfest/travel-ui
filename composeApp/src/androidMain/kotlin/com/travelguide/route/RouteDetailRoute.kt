@@ -53,6 +53,8 @@ fun RouteDetailRoute(
         onEditClick = onEditClick,
         onViewMap = onViewMap,
         onViewList = onViewList,
+        isOfflineMode = false,
+        isOfflineAvailable = state.isOfflineAvailable,
         onOptimizeClick = { request -> vm.optimize(routeId, request) },
         onDownloadOfflineClick = {
             scope.launch {

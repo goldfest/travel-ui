@@ -24,18 +24,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.travelguide.domain.models.RouteMapPoint
 import com.travelguide.route.RouteMapUiState
 import kotlinx.coroutines.launch
-
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -123,46 +122,46 @@ fun RouteMapScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
-                        RouteSummaryCard(
-                            title = routeMap.routeName,
-                            distanceKm = routeMap.totalDistanceKm,
-                            durationMin = routeMap.totalDurationMin,
-                            transport = routeMap.transportMode,
-                            pointsCount = selectedDay.points.size,
-                            daysCount = routeMap.days.size
-                        )
+                    RouteSummaryCard(
+                        title = routeMap.routeName,
+                        distanceKm = routeMap.totalDistanceKm,
+                        durationMin = routeMap.totalDurationMin,
+                        transport = routeMap.transportMode,
+                        pointsCount = selectedDay.points.size,
+                        daysCount = routeMap.days.size
+                    )
 
-                        if (routeMap.days.size > 1) {
-                            DayDropdownButton(
-                                dayNumbers = routeMap.days.map { it.dayNumber },
-                                selectedDayNumber = state.selectedDayNumber,
-                                onDaySelected = onDaySelected
-                            )
-                        }
+                    if (routeMap.days.size > 1) {
+                        DayDropdownButton(
+                            dayNumbers = routeMap.days.map { it.dayNumber },
+                            selectedDayNumber = state.selectedDayNumber,
+                            onDaySelected = onDaySelected
+                        )
                     }
 
-                    Box(
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1f)
+                            .weight(1f),
+                        shape = MaterialTheme.shapes.extraLarge,
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                     ) {
-                        OsmRouteMapView(
-                            day = selectedDay,
-                            selectedPointId = state.selectedPointId,
-                            modifier = Modifier.fillMaxSize(),
-                            onPointClick = { pointId ->
-                                onPointSelected(pointId)
-                                scope.launch {
-                                    scaffoldState.bottomSheetState.partialExpand()
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            OsmRouteMapView(
+                                day = selectedDay,
+                                selectedPointId = state.selectedPointId,
+                                modifier = Modifier.fillMaxSize(),
+                                onPointClick = { pointId ->
+                                    onPointSelected(pointId)
+                                    scope.launch {
+                                        scaffoldState.bottomSheetState.partialExpand()
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }
@@ -210,9 +209,7 @@ private fun RouteSummaryCard(
     daysCount: Int
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 12.dp),
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
         ),

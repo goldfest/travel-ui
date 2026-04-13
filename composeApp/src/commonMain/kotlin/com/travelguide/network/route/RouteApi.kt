@@ -66,6 +66,14 @@ class RouteApi(
         client.delete("$routesUrl/$routeId")
     }
 
+    suspend fun archiveRoute(routeId: Long) {
+        client.post("$routesUrl/$routeId/archive")
+    }
+
+    suspend fun unarchiveRoute(routeId: Long) {
+        client.post("$routesUrl/$routeId/unarchive")
+    }
+
     suspend fun createRoute(request: CreateRouteRequestDto): RouteResponseDto {
         return client.post(routesUrl) {
             contentType(ContentType.Application.Json)

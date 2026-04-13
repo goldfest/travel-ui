@@ -15,6 +15,7 @@ fun CityInfoRoute(
     container: AppContainer,
     cityId: Int,
     onPOIClick: (Int) -> Unit,
+    onOpenCityMap: (Int) -> Unit,
     onBackClick: () -> Unit
 ) {
     val cityVm: CityViewModel = viewModel(
@@ -55,6 +56,7 @@ fun CityInfoRoute(
         onToggleFavorite = { poiId ->
             poiVm.toggleFavoriteForCard(poiId)
         },
-        onBackClick = onBackClick
+        onBackClick = onBackClick,
+        onOpenCityMap = { onOpenCityMap(cityId) }
     )
 }

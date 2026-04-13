@@ -11,6 +11,7 @@ ksp = "1.9.22-1.0.17"
 ktor = "2.3.12"
 settings = "1.2.0"
 lifecycle = "2.8.7"
+preference-ktx = "1.2.1"
 
 [libraries]
 
@@ -39,6 +40,7 @@ androidx-compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling", versi
 androidx-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "compose" }
 
 ktor-client-auth = { module = "io.ktor:ktor-client-auth", version.ref = "ktor" }
+androidx-preference-ktx = { group = "androidx.preference", name = "preference-ktx", version.ref = "preference-ktx" }
 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }

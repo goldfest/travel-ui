@@ -142,15 +142,10 @@ class RouteRepository(
     private var nextLocalPointId = -1
 
     suspend fun getRoutes(archived: Boolean = false): List<Route> {
-        return runCatching {
-            val page = if (archived) api.getArchivedRoutes() else api.getRoutes()
-            val routes = page.content.map { it.toDomain() }
-            localStore?.saveRoutes(routes)
-            routes
-        }.getOrElse { error ->
-            val cached = localStore?.getRoutes(archived).orEmpty()
-            if (cached.isNotEmpty()) cached else throw error
-        }
+        val page = if (archived) api.getArchivedRoutes() else api.getRoutes()
+        val routes = page.content.map { it.toDomain() }
+        localStore?.saveRoutes(routes)
+        return routes
     }
 
     suspend fun getRoutesByCity(cityId: Int): List<Route> {
@@ -513,6 +508,28 @@ class RouteRepository(
             store.enqueue(operation)
         }
     }
+    suspend fun getOfflineRouteById(routeId: Int): Route {
+        return localStore?.getRoute(routeId)
+            ?: error("Оффлайн-маршрут не найден в локальном хранилище")
+    }
+
+    suspend fun archiveRoute(routeId: Int) {
+        api.archiveRoute(routeId.toLong())
+        localStore?.getRoute(routeId)?.let { cached ->
+            localStore.saveRoute(cached.copy(status = RouteStatus.ARCHIVED))
+        }
+    }
+
+    suspend fun unarchiveRoute(routeId: Int) {
+        api.unarchiveRoute(routeId.toLong())
+        localStore?.getRoute(routeId)?.let { cached ->
+            localStore.saveRoute(cached.copy(status = RouteStatus.READY))
+        }
+    }
+
+    suspend fun deleteOfflineRoute(routeId: Int) {
+        localStore?.unmarkRouteOffline(routeId)
+    }
 
     private fun buildLocalRoute(
         routeId: Int,
@@ -772,3 +789,5 @@ private fun RouteUnscheduledPointDto.toDomain(): RouteUnscheduledPoint =
         reasonCode = reasonCode,
         reason = reason
     )
+
+

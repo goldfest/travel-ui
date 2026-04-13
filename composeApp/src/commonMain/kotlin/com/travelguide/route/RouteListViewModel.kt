@@ -2,6 +2,8 @@ package com.travelguide.route
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.travelguide.core.toUserMessage
+import com.travelguide.domain.models.Route
 import com.travelguide.domain.models.RouteStatus
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -10,7 +12,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-import com.travelguide.core.toUserMessage
 class RouteListViewModel(
     private val repository: RouteRepository
 ) : ViewModel() {
@@ -45,6 +46,7 @@ class RouteListViewModel(
                 refreshJob?.cancel()
                 _state.value = _state.value.copy(
                     isLoading = false,
+                    routes = if (filter == RouteListFilter.OFFLINE) _state.value.routes else emptyList(),
                     errorMessage = e.toUserMessage("Не удалось загрузить маршруты")
                 )
             }
@@ -58,26 +60,55 @@ class RouteListViewModel(
 
     fun deleteRoute(routeId: Int) {
         viewModelScope.launch {
-            _state.value = _state.value.copy(
-                deletingRouteId = routeId,
-                errorMessage = null
-            )
+            _state.value = _state.value.copy(deletingRouteId = routeId, errorMessage = null)
 
             runCatching {
-                repository.deleteRoute(routeId)
+                when (_state.value.filter) {
+                    RouteListFilter.OFFLINE -> repository.deleteOfflineRoute(routeId)
+                    else -> repository.deleteRoute(routeId)
+                }
             }.onSuccess {
                 _state.value = _state.value.copy(deletingRouteId = null)
                 loadRoutes(_state.value.filter)
             }.onFailure { e ->
                 _state.value = _state.value.copy(
                     deletingRouteId = null,
-                    errorMessage = e.toUserMessage("Не удалось удалить маршрут")
+                    errorMessage = e.toUserMessage(
+                        if (_state.value.filter == RouteListFilter.OFFLINE)
+                            "Не удалось удалить маршрут с устройства"
+                        else
+                            "Не удалось удалить маршрут"
+                    )
                 )
             }
         }
     }
 
-    private fun scheduleRefreshIfNeeded(filter: RouteListFilter, routes: List<com.travelguide.domain.models.Route>) {
+    fun archiveRoute(routeId: Int) {
+        viewModelScope.launch {
+            runCatching { repository.archiveRoute(routeId) }
+                .onSuccess { loadRoutes(_state.value.filter) }
+                .onFailure { e ->
+                    _state.value = _state.value.copy(
+                        errorMessage = e.toUserMessage("Не удалось переместить маршрут в архив")
+                    )
+                }
+        }
+    }
+
+    fun unarchiveRoute(routeId: Int) {
+        viewModelScope.launch {
+            runCatching { repository.unarchiveRoute(routeId) }
+                .onSuccess { loadRoutes(_state.value.filter) }
+                .onFailure { e ->
+                    _state.value = _state.value.copy(
+                        errorMessage = e.toUserMessage("Не удалось вернуть маршрут из архива")
+                    )
+                }
+        }
+    }
+
+    private fun scheduleRefreshIfNeeded(filter: RouteListFilter, routes: List<Route>) {
         refreshJob?.cancel()
         if (filter != RouteListFilter.ACTIVE || routes.none { it.status == RouteStatus.GRAPH_PREPARING }) {
             return
