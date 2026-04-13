@@ -28,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -56,6 +57,7 @@ fun RouteListScreen(
     deletingRouteId: Int?,
     errorMessage: String?,
     routeIdsWithDrafts: Set<Int>,
+    syncingRouteIds: Set<Int>,
     showApplyDraftsDialog: Boolean,
     isApplyingDrafts: Boolean,
     snackbarHostState: SnackbarHostState,
@@ -248,6 +250,7 @@ fun RouteListScreen(
                                 isDeleting = deletingRouteId == route.id,
                                 showOfflineBadge = filter == RouteListFilter.OFFLINE,
                                 hasSavedDraft = route.id in routeIdsWithDrafts,
+                                isSyncing = route.id in syncingRouteIds,
                                 onClick = { onRouteClick(route.id) },
                                 onLongClick = { pendingDeleteRoute = route }
                             )
@@ -294,6 +297,7 @@ fun RouteCard(
     isDeleting: Boolean,
     showOfflineBadge: Boolean,
     hasSavedDraft: Boolean,
+    isSyncing: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
@@ -326,6 +330,23 @@ fun RouteCard(
                 if (showOfflineBadge && hasSavedDraft) {
                     Surface { Text(text = "Есть черновик", style = MaterialTheme.typography.labelMedium) }
                 }
+                if (isSyncing) {
+                    Surface { Text(text = "Синхронизация", style = MaterialTheme.typography.labelMedium) }
+                }
+            }
+
+            if (isSyncing) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp)
+                )
+                Text(
+                    text = "Применяем оффлайн-изменения…",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
             }
 
             if (route.status == RouteStatus.GRAPH_PREPARING) {

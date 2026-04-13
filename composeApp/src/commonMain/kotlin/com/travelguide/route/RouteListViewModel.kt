@@ -132,9 +132,11 @@ class RouteListViewModel(
 
     fun applySavedDrafts() {
         viewModelScope.launch {
+            val syncingRouteIds = repository.getRouteIdsWithSavedEditorDrafts()
             _state.value = _state.value.copy(
                 showApplyDraftsDialog = false,
                 isApplyingDrafts = true,
+                syncingRouteIds = syncingRouteIds,
                 errorMessage = null
             )
 
@@ -143,6 +145,7 @@ class RouteListViewModel(
                     loadRoutes(_state.value.filter, silent = true)
                     _state.value = _state.value.copy(
                         isApplyingDrafts = false,
+                        syncingRouteIds = emptySet(),
                         routeIdsWithDrafts = repository.getRouteIdsWithSavedEditorDrafts()
                     ).withSyncMessage(
                         nextSyncMessageId(),
@@ -156,6 +159,7 @@ class RouteListViewModel(
                 .onFailure { e ->
                     _state.value = _state.value.copy(
                         isApplyingDrafts = false,
+                        syncingRouteIds = emptySet(),
                         errorMessage = e.toUserMessage("Не удалось применить оффлайн-изменения")
                     )
                 }

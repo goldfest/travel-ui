@@ -251,7 +251,7 @@ fun AppNavHost(
                 routeId = routeId,
                 onBackClick = { navController.popBackStack() },
                 onEditClick = { navController.navigate("routeEditor/edit/$routeId?offline=true") },
-                onViewMap = { navController.navigate("routeMap/$routeId") }
+                onViewMap = { navController.navigate("routeMap/$routeId?offline=true") }
             )
         }
 
@@ -299,20 +299,23 @@ fun AppNavHost(
                 container = container,
                 routeId = routeId,
                 onBackClick = { navController.popBackStack() },
-                onEditClick = { navController.navigate("routeEditor/edit/$routeId?offline=true") },
-                onViewMap = { navController.navigate("routeMap/$routeId") },
+                onEditClick = { navController.navigate("routeEditor/edit/$routeId?offline=false") },
+                onViewMap = { navController.navigate("routeMap/$routeId?offline=false") },
                 onViewList = { }
             )
         }
 
-        composable("routeMap/{routeId}") { backStackEntry ->
+        composable("routeMap/{routeId}?offline={offline}") { backStackEntry ->
             val routeId = backStackEntry.arguments?.getString("routeId")?.toIntOrNull() ?: 1
+            val offlineMode = backStackEntry.arguments?.getString("offline") == "true"
 
             RouteMapRoute(
                 container = container,
                 routeId = routeId,
                 onBackClick = { navController.popBackStack() },
-                onViewList = { navController.popBackStack() }
+                onViewList = { navController.popBackStack() },
+                onOpenPoi = { poiId -> navController.navigate("poiDetail/$poiId") },
+                showOpenPoiAction = !offlineMode
             )
         }
 

@@ -14,7 +14,8 @@ fun RouteMapRoute(
     routeId: Int,
     onBackClick: () -> Unit,
     onViewList: () -> Unit,
-    onOpenPoi: (Int) -> Unit = {}
+    onOpenPoi: (Int) -> Unit = {},
+    showOpenPoiAction: Boolean = true
 ) {
     val viewModel = remember { RouteMapViewModel(container.routeRepository) }
     val state by viewModel.state.collectAsState()
@@ -30,6 +31,7 @@ fun RouteMapRoute(
         onViewList = onViewList,
         onDaySelected = viewModel::selectDay,
         onPointSelected = viewModel::selectPoint,
-        onOpenPoi = onOpenPoi
+        onOpenPoi = onOpenPoi,
+        showOpenPoiAction = showOpenPoiAction
     )
 }

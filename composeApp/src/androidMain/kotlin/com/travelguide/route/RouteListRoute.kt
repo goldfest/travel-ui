@@ -59,6 +59,7 @@ fun RouteListRoute(
         deletingRouteId = state.deletingRouteId,
         errorMessage = state.errorMessage,
         routeIdsWithDrafts = state.routeIdsWithDrafts,
+        syncingRouteIds = state.syncingRouteIds,
         showApplyDraftsDialog = state.showApplyDraftsDialog,
         isApplyingDrafts = state.isApplyingDrafts,
         snackbarHostState = snackbarHostState,

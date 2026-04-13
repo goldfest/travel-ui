@@ -21,7 +21,8 @@ data class RouteListUiState(
     val hasPendingSync: Boolean = false,
     val routeIdsWithDrafts: Set<Int> = emptySet(),
     val showApplyDraftsDialog: Boolean = false,
-    val isApplyingDrafts: Boolean = false
+    val isApplyingDrafts: Boolean = false,
+    val syncingRouteIds: Set<Int> = emptySet()
 )
 
 data class RouteDetailUiState(

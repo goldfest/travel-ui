@@ -15,6 +15,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.distinctUntilChanged
 
+import com.travelguide.core.isInternetUnavailableIssue
+import com.travelguide.core.isServerUnavailableIssue
 import com.travelguide.core.toUserMessage
 class RouteEditorViewModel(
     private val routeRepository: RouteRepository,
@@ -454,7 +456,7 @@ class RouteEditorViewModel(
             }.onFailure { e ->
                 val currentRouteId = current.routeId
                 val hasPending = currentRouteId?.let { routeRepository.hasPendingSync(it) } == true
-                if (hasPending && e.isConnectivityIssue()) {
+                if (hasPending && e.shouldKeepOfflineChanges()) {
                     _state.value = _state.value.copy(
                         isSaving = false,
                         savedRouteId = null,
@@ -500,14 +502,16 @@ class RouteEditorViewModel(
             routeRepository.observePendingSync(routeId)
                 .distinctUntilChanged()
                 .collect { hasPending ->
-                    val existingMessage = _state.value.syncNoticeMessage
+                    val currentState = _state.value
+                    val existingMessage = currentState.syncNoticeMessage
+                    val shouldShowPendingNotice = currentState.availableCities.isEmpty() || routeId < 0
                     val message = when {
                         hasPending && routeId < 0 -> "Маршрут сохранён локально. Он будет создан на сервере автоматически после появления интернета."
-                        hasPending -> "Ваши изменения пока не применены на сервере. Подключитесь к интернету — синхронизация выполнится автоматически."
+                        hasPending && shouldShowPendingNotice -> "Ваши изменения пока не применены на сервере. Подключитесь к интернету — синхронизация выполнится автоматически."
                         existingMessage?.contains("без интернета") == true -> existingMessage
                         else -> null
                     }
-                    _state.value = _state.value.copy(syncNoticeMessage = message)
+                    _state.value = currentState.copy(syncNoticeMessage = message)
                 }
         }
     }
@@ -627,17 +631,6 @@ private fun com.travelguide.domain.models.RoutePoint.toEditorPoi(cityId: Int): P
         features = emptyList()
     )
 }
-private fun Throwable.isConnectivityIssue(): Boolean {
-    val lower = message?.lowercase().orEmpty()
-    return "failed to connect" in lower ||
-            "unable to resolve host" in lower ||
-            "failed host lookup" in lower ||
-            "network is unreachable" in lower ||
-            "connection refused" in lower ||
-            "socket closed" in lower ||
-            "timeout" in lower ||
-            "timed out" in lower ||
-            "no address associated with hostname" in lower ||
-            "software caused connection abort" in lower ||
-            "broken pipe" in lower
+private fun Throwable.shouldKeepOfflineChanges(): Boolean {
+    return isInternetUnavailableIssue() || isServerUnavailableIssue()
 }

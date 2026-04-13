@@ -45,7 +45,8 @@ fun RouteMapScreen(
     onViewList: () -> Unit,
     onDaySelected: (Int) -> Unit,
     onPointSelected: (Int) -> Unit,
-    onOpenPoi: (Int) -> Unit = {}
+    onOpenPoi: (Int) -> Unit = {},
+    showOpenPoiAction: Boolean = true
 ) {
     val routeMap = state.routeMap
     val selectedDay = routeMap?.days?.firstOrNull { it.dayNumber == state.selectedDayNumber }
@@ -104,7 +105,8 @@ fun RouteMapScreen(
                                 scaffoldState.bottomSheetState.partialExpand()
                             }
                         },
-                        onOpenPoi = onOpenPoi
+                        onOpenPoi = onOpenPoi,
+                        showOpenPoiAction = showOpenPoiAction
                     )
                 },
                 topBar = {
@@ -239,7 +241,8 @@ private fun RoutePointsSheet(
     points: List<RouteMapPoint>,
     selectedPointId: Int?,
     onPointClick: (Int) -> Unit,
-    onOpenPoi: (Int) -> Unit
+    onOpenPoi: (Int) -> Unit,
+    showOpenPoiAction: Boolean
 ) {
     LazyColumn(
         modifier = Modifier
@@ -283,11 +286,13 @@ private fun RoutePointsSheet(
                         )
                     }
 
-                    Button(
-                        onClick = { onOpenPoi(point.poiId) },
-                        modifier = Modifier.padding(top = 8.dp)
-                    ) {
-                        Text("Открыть объект")
+                    if (showOpenPoiAction) {
+                        Button(
+                            onClick = { onOpenPoi(point.poiId) },
+                            modifier = Modifier.padding(top = 8.dp)
+                        ) {
+                            Text("Открыть объект")
+                        }
                     }
                 }
             }
