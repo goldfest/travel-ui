@@ -10,6 +10,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 class RouteListViewModel(
@@ -17,14 +19,19 @@ class RouteListViewModel(
 ) : ViewModel() {
 
     private var refreshJob: Job? = null
+    private var syncWatcherJob: Job? = null
+    private var syncRefreshJob: Job? = null
+    private var syncMessageCounter: Long = 0L
+    private var lastPendingSyncState: Boolean? = null
 
     private val _state = MutableStateFlow(RouteListUiState())
     val state: StateFlow<RouteListUiState> = _state.asStateFlow()
 
-    fun loadRoutes(filter: RouteListFilter = _state.value.filter) {
+
+    fun loadRoutes(filter: RouteListFilter = _state.value.filter, silent: Boolean = false) {
         viewModelScope.launch {
             _state.value = _state.value.copy(
-                isLoading = true,
+                isLoading = if (silent) _state.value.isLoading else true,
                 errorMessage = null,
                 filter = filter
             )
@@ -39,6 +46,7 @@ class RouteListViewModel(
                 _state.value = _state.value.copy(
                     isLoading = false,
                     routes = routes,
+                    routeIdsWithDrafts = repository.getRouteIdsWithSavedEditorDrafts(),
                     errorMessage = null
                 )
                 scheduleRefreshIfNeeded(filter, routes)
@@ -108,6 +116,68 @@ class RouteListViewModel(
         }
     }
 
+
+    fun onNetworkRestored() {
+        viewModelScope.launch {
+            if (_state.value.showApplyDraftsDialog || _state.value.isApplyingDrafts) return@launch
+            if (repository.hasAnySavedEditorDrafts()) {
+                _state.value = _state.value.copy(showApplyDraftsDialog = true)
+            }
+        }
+    }
+
+    fun dismissApplyDraftsDialog() {
+        _state.value = _state.value.copy(showApplyDraftsDialog = false)
+    }
+
+    fun applySavedDrafts() {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(
+                showApplyDraftsDialog = false,
+                isApplyingDrafts = true,
+                errorMessage = null
+            )
+
+            runCatching { repository.applySavedEditorDrafts() }
+                .onSuccess { appliedCount ->
+                    loadRoutes(_state.value.filter, silent = true)
+                    _state.value = _state.value.copy(
+                        isApplyingDrafts = false,
+                        routeIdsWithDrafts = repository.getRouteIdsWithSavedEditorDrafts()
+                    ).withSyncMessage(
+                        nextSyncMessageId(),
+                        if (appliedCount > 0) {
+                            "Изменения из оффлайн-черновиков успешно применены."
+                        } else {
+                            "Сохранённых черновиков для применения не найдено."
+                        }
+                    )
+                }
+                .onFailure { e ->
+                    _state.value = _state.value.copy(
+                        isApplyingDrafts = false,
+                        errorMessage = e.toUserMessage("Не удалось применить оффлайн-изменения")
+                    )
+                }
+        }
+    }
+
+
+    private fun startAutoRefreshWhileSyncPending() {
+        if (syncRefreshJob?.isActive == true) return
+        syncRefreshJob = viewModelScope.launch {
+            while (true) {
+                delay(4000)
+                loadRoutes(_state.value.filter, silent = true)
+            }
+        }
+    }
+
+    private fun stopAutoRefreshWhileSyncPending() {
+        syncRefreshJob?.cancel()
+        syncRefreshJob = null
+    }
+
     private fun scheduleRefreshIfNeeded(filter: RouteListFilter, routes: List<Route>) {
         refreshJob?.cancel()
         if (filter != RouteListFilter.ACTIVE || routes.none { it.status == RouteStatus.GRAPH_PREPARING }) {
@@ -116,7 +186,19 @@ class RouteListViewModel(
 
         refreshJob = viewModelScope.launch {
             delay(4000)
-            loadRoutes(filter)
+            loadRoutes(filter, silent = true)
         }
     }
+
+    private fun nextSyncMessageId(): Long {
+        syncMessageCounter += 1L
+        return syncMessageCounter
+    }
+}
+
+private fun RouteListUiState.withSyncMessage(messageId: Long, message: String): RouteListUiState {
+    return copy(
+        syncStatusMessage = message,
+        syncStatusMessageId = messageId
+    )
 }

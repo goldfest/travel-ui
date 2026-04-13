@@ -15,7 +15,13 @@ data class RouteListUiState(
     val routes: List<Route> = emptyList(),
     val filter: RouteListFilter = RouteListFilter.ACTIVE,
     val deletingRouteId: Int? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val syncStatusMessage: String? = null,
+    val syncStatusMessageId: Long = 0L,
+    val hasPendingSync: Boolean = false,
+    val routeIdsWithDrafts: Set<Int> = emptySet(),
+    val showApplyDraftsDialog: Boolean = false,
+    val isApplyingDrafts: Boolean = false
 )
 
 data class RouteDetailUiState(

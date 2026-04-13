@@ -28,6 +28,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -53,6 +55,10 @@ fun RouteListScreen(
     filter: RouteListFilter,
     deletingRouteId: Int?,
     errorMessage: String?,
+    routeIdsWithDrafts: Set<Int>,
+    showApplyDraftsDialog: Boolean,
+    isApplyingDrafts: Boolean,
+    snackbarHostState: SnackbarHostState,
     onRetry: () -> Unit,
     onBackClick: () -> Unit,
     onFilterChange: (RouteListFilter) -> Unit,
@@ -61,8 +67,32 @@ fun RouteListScreen(
     onArchiveRoute: (Int) -> Unit,
     onUnarchiveRoute: (Int) -> Unit,
     onCreateRoute: (() -> Unit)? = null,
+    onApplyDrafts: () -> Unit,
+    onDismissApplyDraftsDialog: () -> Unit,
 ) {
     var pendingDeleteRoute by remember { mutableStateOf<Route?>(null) }
+
+    if (showApplyDraftsDialog) {
+        AlertDialog(
+            onDismissRequest = onDismissApplyDraftsDialog,
+            title = { Text("Применить оффлайн-изменения") },
+            text = {
+                Text(
+                    "Интернет-соединение восстановлено. Найдены сохранённые черновики изменений маршрутов. Применить их сейчас?"
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = onApplyDrafts, enabled = !isApplyingDrafts) {
+                    Text("Применить")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismissApplyDraftsDialog, enabled = !isApplyingDrafts) {
+                    Text("Позже")
+                }
+            }
+        )
+    }
 
     pendingDeleteRoute?.let { route ->
         AlertDialog(
@@ -132,6 +162,7 @@ fun RouteListScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Маршруты") },
@@ -216,6 +247,7 @@ fun RouteListScreen(
                                 route = route,
                                 isDeleting = deletingRouteId == route.id,
                                 showOfflineBadge = filter == RouteListFilter.OFFLINE,
+                                hasSavedDraft = route.id in routeIdsWithDrafts,
                                 onClick = { onRouteClick(route.id) },
                                 onLongClick = { pendingDeleteRoute = route }
                             )
@@ -261,6 +293,7 @@ fun RouteCard(
     route: Route,
     isDeleting: Boolean,
     showOfflineBadge: Boolean,
+    hasSavedDraft: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
@@ -289,6 +322,9 @@ fun RouteCard(
                 Surface { Text(text = route.status.label(), style = MaterialTheme.typography.labelMedium) }
                 if (showOfflineBadge) {
                     Surface { Text(text = "Оффлайн", style = MaterialTheme.typography.labelMedium) }
+                }
+                if (showOfflineBadge && hasSavedDraft) {
+                    Surface { Text(text = "Есть черновик", style = MaterialTheme.typography.labelMedium) }
                 }
             }
 

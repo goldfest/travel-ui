@@ -1,9 +1,11 @@
 package com.travelguide.route
 
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.travelguide.AppContainer
 import com.travelguide.ui.screens.route.RouteEditorScreen
@@ -28,6 +30,7 @@ fun RouteEditorRoute(
     )
 
     val state by vm.state.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(routeId, cityId, initialPoiId) {
         if (routeId != null) {
@@ -61,7 +64,11 @@ fun RouteEditorRoute(
         isSaving = state.isSaving,
         errorMessage = state.errorMessage,
         syncNoticeMessage = state.syncNoticeMessage,
-        onBackClick = onBackClick,
+        snackbarHostState = snackbarHostState,
+        onBackClick = {
+            vm.persistDraftNow()
+            onBackClick()
+        },
         onCitySelected = vm::onCitySelected,
         onDownloadGraphClick = vm::downloadGraphForSelectedCity,
         onNameChange = vm::onNameChange,

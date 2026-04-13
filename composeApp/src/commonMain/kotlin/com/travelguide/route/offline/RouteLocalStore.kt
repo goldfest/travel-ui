@@ -21,6 +21,12 @@ interface RouteLocalStore {
     suspend fun savePoisByCity(cityId: Int, pois: List<POI>)
     suspend fun findPoiById(poiId: Int): POI?
 
+
+    suspend fun getEditorDraft(key: String): String?
+    suspend fun getAllEditorDrafts(): List<String>
+    suspend fun saveEditorDraft(key: String, draftJson: String)
+    suspend fun deleteEditorDraft(key: String)
+
     suspend fun markRouteOffline(routeId: Int, routeMap: RouteMap, graphJson: String? = null)
     suspend fun unmarkRouteOffline(routeId: Int)
     suspend fun isRouteOffline(routeId: Int): Boolean
@@ -32,4 +38,5 @@ interface RouteLocalStore {
     suspend fun replacePendingCreate(operation: PendingRouteSyncOperation)
     suspend fun hasPendingSync(routeId: Int): Boolean
     fun observePendingSync(routeId: Int): Flow<Boolean>
+    fun observeAnyPendingSync(): Flow<Boolean>
 }

@@ -3,18 +3,22 @@ package com.travelguide.route
 import com.travelguide.domain.models.City
 import com.travelguide.domain.models.POI
 import com.travelguide.domain.models.TransportMode
+import kotlinx.serialization.Serializable
 
+@Serializable
 enum class RouteEditorMode {
     CREATE,
     EDIT
 }
 
+@Serializable
 data class EditableRoutePointUi(
     val routePointId: Int? = null,
     val poi: POI,
     val estimatedVisitMinutes: Int = 60
 )
 
+@Serializable
 data class EditableRouteDayUi(
     val routeDayId: Int? = null,
     val dayNumber: Int,
@@ -52,5 +56,8 @@ data class RouteEditorUiState(
 
     val errorMessage: String? = null,
     val syncNoticeMessage: String? = null,
+    val hasPendingSync: Boolean = false,
+    val snackbarMessage: String? = null,
+    val snackbarMessageId: Long = 0L,
     val savedRouteId: Int? = null
 )

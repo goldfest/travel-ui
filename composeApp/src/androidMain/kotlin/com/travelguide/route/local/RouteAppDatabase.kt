@@ -15,9 +15,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         OfflineRouteDownloadEntity::class,
         OfflineRouteGraphCacheEntity::class,
         OfflineRouteArchiveCacheEntity::class,
-        RouteSyncQueueEntity::class
+        RouteSyncQueueEntity::class,
+        RouteEditorDraftCacheEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class RouteAppDatabase : RoomDatabase() {
@@ -64,6 +65,21 @@ abstract class RouteAppDatabase : RoomDatabase() {
             }
         }
 
+
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS route_editor_draft_cache (
+                        draftKey TEXT NOT NULL PRIMARY KEY,
+                        updatedAtEpochMs INTEGER NOT NULL,
+                        draftJson TEXT NOT NULL
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
         fun getInstance(context: Context): RouteAppDatabase =
             INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -71,7 +87,7 @@ abstract class RouteAppDatabase : RoomDatabase() {
                     RouteAppDatabase::class.java,
                     "travelguide_routes.db"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build()
                     .also { INSTANCE = it }
             }

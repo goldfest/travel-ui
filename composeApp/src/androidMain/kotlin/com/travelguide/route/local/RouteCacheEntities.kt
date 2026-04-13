@@ -61,3 +61,11 @@ data class RouteSyncQueueEntity(
     val createdAtEpochMs: Long,
     val attempts: Int = 0
 )
+
+
+@Entity(tableName = "route_editor_draft_cache")
+data class RouteEditorDraftCacheEntity(
+    @PrimaryKey val draftKey: String,
+    val updatedAtEpochMs: Long,
+    val draftJson: String
+)

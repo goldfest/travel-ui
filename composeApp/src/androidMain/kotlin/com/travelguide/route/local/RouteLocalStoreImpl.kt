@@ -97,6 +97,29 @@ class RouteLocalStoreImpl(
             .firstOrNull { it.id == poiId }
     }
 
+
+    override suspend fun getEditorDraft(key: String): String? {
+        return dao.getEditorDraft(key)?.draftJson
+    }
+
+    override suspend fun getAllEditorDrafts(): List<String> {
+        return dao.getAllEditorDrafts().map { it.draftJson }
+    }
+
+    override suspend fun saveEditorDraft(key: String, draftJson: String) {
+        dao.upsertEditorDraft(
+            RouteEditorDraftCacheEntity(
+                draftKey = key,
+                updatedAtEpochMs = System.currentTimeMillis(),
+                draftJson = draftJson
+            )
+        )
+    }
+
+    override suspend fun deleteEditorDraft(key: String) {
+        dao.deleteEditorDraft(key)
+    }
+
     override suspend fun markRouteOffline(routeId: Int, routeMap: RouteMap, graphJson: String?) {
         val now = System.currentTimeMillis()
         dao.upsertOfflineDownload(
@@ -178,4 +201,6 @@ class RouteLocalStoreImpl(
     override suspend fun hasPendingSync(routeId: Int): Boolean = dao.hasPendingSync(routeId)
 
     override fun observePendingSync(routeId: Int): Flow<Boolean> = dao.observeHasPendingSync(routeId)
+
+    override fun observeAnyPendingSync(): Flow<Boolean> = dao.observeAnyPendingSync()
 }

@@ -49,6 +49,7 @@ private val routeResponseJson = Json {
     ignoreUnknownKeys = true
     encodeDefaults = true
 }
+private fun editorEditDraftKey(routeId: Int): String = "route-editor:edit:$routeId"
 class RouteRepository(
     private val api: RouteApi,
     private val poiRepository: PoiRepository,
@@ -79,6 +80,58 @@ class RouteRepository(
 
     fun observePendingSync(routeId: Int): Flow<Boolean> {
         return localStore?.observePendingSync(routeId) ?: flowOf(false)
+    }
+
+    fun observeAnyPendingSync(): Flow<Boolean> {
+        return localStore?.observeAnyPendingSync() ?: flowOf(false)
+    }
+
+
+    suspend fun getEditorDraft(key: String): RouteEditorDraftPayload? {
+        val draftJson = localStore?.getEditorDraft(key) ?: return null
+        return runCatching { json.decodeFromString<RouteEditorDraftPayload>(draftJson) }.getOrNull()
+    }
+
+    suspend fun saveEditorDraft(key: String, state: RouteEditorUiState) {
+        val store = localStore ?: return
+        store.saveEditorDraft(key, json.encodeToString(state.toDraftPayload(key)))
+    }
+
+    suspend fun deleteEditorDraft(key: String) {
+        localStore?.deleteEditorDraft(key)
+    }
+
+
+    suspend fun hasAnySavedEditorDrafts(): Boolean {
+        return getRouteIdsWithSavedEditorDrafts().isNotEmpty()
+    }
+
+    suspend fun getRouteIdsWithSavedEditorDrafts(): Set<Int> {
+        val store = localStore ?: return emptySet()
+        return store.getAllEditorDrafts()
+            .mapNotNull { draftJson -> runCatching { json.decodeFromString<RouteEditorDraftPayload>(draftJson) }.getOrNull() }
+            .filter { it.mode == RouteEditorMode.EDIT }
+            .mapNotNull { it.routeId }
+            .toSet()
+    }
+
+    suspend fun applySavedEditorDrafts(): Int {
+        val store = localStore ?: return 0
+        val drafts = store.getAllEditorDrafts()
+            .mapNotNull { draftJson -> runCatching { json.decodeFromString<RouteEditorDraftPayload>(draftJson) }.getOrNull() }
+            .filter { it.mode == RouteEditorMode.EDIT && it.routeId != null }
+
+        var appliedCount = 0
+        drafts.forEach { draft ->
+            val routeId = draft.routeId ?: return@forEach
+            runCatching {
+                applyEditDraft(draft)
+            }.onSuccess {
+                store.deleteEditorDraft(editorEditDraftKey(routeId))
+                appliedCount += 1
+            }
+        }
+        return appliedCount
     }
 
     suspend fun saveRouteOffline(routeId: Int): Route {
@@ -524,6 +577,73 @@ class RouteRepository(
     suspend fun getOfflineRouteById(routeId: Int): Route {
         return localStore?.getRoute(routeId)
             ?: error("Оффлайн-маршрут не найден в локальном хранилище")
+    }
+
+
+    private suspend fun applyEditDraft(draft: RouteEditorDraftPayload): Route {
+        val routeId = draft.routeId ?: error("Draft routeId is missing")
+        val original = getRouteById(routeId)
+        val days = draft.days.ifEmpty { listOf(EditableRouteDayUi(dayNumber = 1)) }
+
+        if (days.size != original.days.size) {
+            error("Сервер пока не поддерживает добавление или удаление дней при редактировании")
+        }
+
+        updateRouteMeta(
+            routeId = routeId,
+            name = draft.routeName.trim(),
+            description = draft.routeDescription.trim().ifBlank { null },
+            transportMode = draft.selectedTransport
+        )
+
+        original.days.sortedBy { it.dayNumber }.forEach { originalDay ->
+            val currentDay = days.firstOrNull { it.dayNumber == originalDay.dayNumber }
+                ?: return@forEach
+
+            val currentPointIds = currentDay.points.mapNotNull { it.routePointId }.toSet()
+
+            originalDay.points
+                .filterNot { it.id in currentPointIds }
+                .forEach { removedPoint ->
+                    removePointFromRoute(routeId, removedPoint.id)
+                }
+
+            currentDay.points
+                .filter { it.routePointId == null }
+                .forEachIndexed { index, newPoint ->
+                    addPoiToRoute(
+                        routeId = routeId,
+                        poiId = newPoint.poi.id,
+                        dayNumber = originalDay.dayNumber,
+                        orderIndex = index + 1
+                    )
+                }
+        }
+
+        val afterAddRemove = getRouteById(routeId)
+
+        afterAddRemove.days.sortedBy { it.dayNumber }.forEach { reloadedDay ->
+            val desiredDay = days.firstOrNull { it.dayNumber == reloadedDay.dayNumber }
+                ?: return@forEach
+
+            val usedIds = mutableSetOf<Int>()
+            val desiredPointIds = desiredDay.points.mapNotNull { desiredPoint ->
+                val matched = reloadedDay.points.firstOrNull { actual ->
+                    actual.poiId == desiredPoint.poi.id && actual.id !in usedIds
+                }
+                matched?.id?.also { usedIds += it }
+            }
+
+            if (desiredPointIds.size == reloadedDay.points.size && desiredPointIds.isNotEmpty()) {
+                reorderDayPoints(
+                    routeId = routeId,
+                    dayId = reloadedDay.id,
+                    orderedPointIds = desiredPointIds
+                )
+            }
+        }
+
+        return getRouteById(routeId)
     }
 
     suspend fun archiveRoute(routeId: Int) {

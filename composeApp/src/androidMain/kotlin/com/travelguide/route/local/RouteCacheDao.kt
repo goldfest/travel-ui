@@ -65,6 +65,19 @@ interface RouteCacheDao {
     @Query("DELETE FROM offline_route_archive_cache WHERE routeId = :routeId")
     suspend fun deleteOfflineArchive(routeId: Int)
 
+
+    @Query("SELECT * FROM route_editor_draft_cache WHERE draftKey = :draftKey")
+    suspend fun getEditorDraft(draftKey: String): RouteEditorDraftCacheEntity?
+
+    @Query("SELECT * FROM route_editor_draft_cache ORDER BY updatedAtEpochMs DESC")
+    suspend fun getAllEditorDrafts(): List<RouteEditorDraftCacheEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertEditorDraft(entity: RouteEditorDraftCacheEntity)
+
+    @Query("DELETE FROM route_editor_draft_cache WHERE draftKey = :draftKey")
+    suspend fun deleteEditorDraft(draftKey: String)
+
     @Query("SELECT * FROM route_sync_queue ORDER BY id ASC")
     suspend fun getPendingSyncOperations(): List<RouteSyncQueueEntity>
 
@@ -88,4 +101,6 @@ interface RouteCacheDao {
 
     @Query("SELECT EXISTS(SELECT 1 FROM route_sync_queue WHERE routeId = :routeId)")
     fun observeHasPendingSync(routeId: Int): Flow<Boolean>
+    @Query("SELECT EXISTS(SELECT 1 FROM route_sync_queue)")
+    fun observeAnyPendingSync(): Flow<Boolean>
 }

@@ -250,7 +250,7 @@ fun AppNavHost(
                 container = container,
                 routeId = routeId,
                 onBackClick = { navController.popBackStack() },
-                onEditClick = { navController.navigate("routeEditor/edit/$routeId") },
+                onEditClick = { navController.navigate("routeEditor/edit/$routeId?offline=true") },
                 onViewMap = { navController.navigate("routeMap/$routeId") }
             )
         }
@@ -273,8 +273,9 @@ fun AppNavHost(
             )
         }
 
-        composable("routeEditor/edit/{routeId}") { backStackEntry ->
+        composable("routeEditor/edit/{routeId}?offline={offline}") { backStackEntry ->
             val routeId = backStackEntry.arguments?.getString("routeId")?.toIntOrNull() ?: return@composable
+            val offlineSource = backStackEntry.arguments?.getString("offline") == "true"
 
             RouteEditorRoute(
                 container = container,
@@ -283,8 +284,9 @@ fun AppNavHost(
                 initialPoiId = null,
                 onBackClick = { navController.popBackStack() },
                 onSaved = { savedId ->
-                    navController.navigate("routeDetail/$savedId") {
-                        popUpTo("routeEditor/edit/$routeId") { inclusive = true }
+                    val target = if (offlineSource) "offlineRouteDetail/$savedId" else "routeDetail/$savedId"
+                    navController.navigate(target) {
+                        popUpTo("routeEditor/edit/$routeId?offline=$offlineSource") { inclusive = true }
                     }
                 }
             )
@@ -297,7 +299,7 @@ fun AppNavHost(
                 container = container,
                 routeId = routeId,
                 onBackClick = { navController.popBackStack() },
-                onEditClick = { navController.navigate("routeEditor/edit/$routeId") },
+                onEditClick = { navController.navigate("routeEditor/edit/$routeId?offline=true") },
                 onViewMap = { navController.navigate("routeMap/$routeId") },
                 onViewList = { }
             )
