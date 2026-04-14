@@ -33,6 +33,7 @@ import com.travelguide.route.local.RouteLocalStoreImpl
 import com.travelguide.route.local.RouteSyncScheduler
 import com.travelguide.search.SearchHistoryRepository
 import com.travelguide.session.SessionManager
+import com.travelguide.core.NetworkConfig
 
 class AppContainer(context: Context) {
 
@@ -43,14 +44,14 @@ class AppContainer(context: Context) {
     )
     private val userCache = UserCache(settings)
 
-    private val authHostUrl = "http://192.168.1.9:8084"
-    private val authApiBaseUrl = "$authHostUrl/api"
-    private val cityBaseUrl = "http://192.168.1.9:8082/api/cities"
-    private val poiBaseUrl = "http://192.168.1.9:8081/api/poi"
-    private val reviewBaseUrl = "http://192.168.1.9:8083/api/reviews"
-    private val personalizationBaseUrl = "http://192.168.1.9:8085/api/personalization"
-    private val routeBaseUrl = "http://192.168.1.9:8087/api/routes"
-    private val notificationBaseUrl = "http://192.168.1.9:8086/api/notifications"
+    private val authHostUrl = NetworkConfig.AUTH_HOST
+    private val authApiBaseUrl = NetworkConfig.AUTH_API
+    private val cityBaseUrl = NetworkConfig.CITY_API
+    private val poiBaseUrl = NetworkConfig.POI_API
+    private val reviewBaseUrl = NetworkConfig.REVIEW_API
+    private val personalizationBaseUrl = NetworkConfig.PERSONALIZATION_API
+    private val routeBaseUrl = NetworkConfig.ROUTE_API
+    private val notificationBaseUrl = NetworkConfig.NOTIFICATION_API
 
     val tokenStorage = TokenStorage(settings)
     private val httpClient = HttpClientFactory().create(authApiBaseUrl, tokenStorage)

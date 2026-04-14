@@ -5,6 +5,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.russhwolf.settings.SharedPreferencesSettings
 import com.travelguide.auth.TokenStorage
+import com.travelguide.core.NetworkConfig
 import com.travelguide.domain.models.Route
 import com.travelguide.domain.models.RouteDay
 import com.travelguide.domain.models.RouteMap
@@ -49,8 +50,8 @@ class RouteSyncWorker(
     )
     private val tokenStorage = TokenStorage(settings)
     private val routeApi = RouteApi(
-        HttpClientFactory().create("http://192.168.1.9:8084/api", tokenStorage),
-        "http://192.168.1.9:8087/api/routes"
+        HttpClientFactory().create(NetworkConfig.AUTH_API, tokenStorage),
+        NetworkConfig.ROUTE_API
     )
 
     override suspend fun doWork(): Result {

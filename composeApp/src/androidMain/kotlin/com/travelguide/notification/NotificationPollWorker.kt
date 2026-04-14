@@ -5,6 +5,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.russhwolf.settings.SharedPreferencesSettings
 import com.travelguide.auth.TokenStorage
+import com.travelguide.core.NetworkConfig
 import com.travelguide.network.HttpClientFactory
 import com.travelguide.network.notification.NotificationApi
 
@@ -18,8 +19,8 @@ class NotificationPollWorker(
     )
     private val tokenStorage = TokenStorage(settings)
     private val api = NotificationApi(
-        HttpClientFactory().create("http://192.168.1.9:8084/api", tokenStorage),
-        "http://192.168.1.9:8086/api/notifications"
+        HttpClientFactory().create(NetworkConfig.AUTH_API, tokenStorage),
+        NetworkConfig.NOTIFICATION_API
     )
     private val repository = NotificationRepository(api)
 
