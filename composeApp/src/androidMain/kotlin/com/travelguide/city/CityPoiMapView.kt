@@ -1,6 +1,7 @@
 package com.travelguide.city
 
 import android.content.Context
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -9,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.travelguide.domain.models.POI
+import com.travelguide.ui.screens.route.applyMapTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.osmdroid.config.Configuration
@@ -25,6 +27,7 @@ fun CityPoiMapView(
     onPoiClick: (Int) -> Unit
 ) {
     val context = LocalContext.current
+    val darkTheme = isSystemInDarkTheme()
 
     val mapView = remember {
         createMapView(context)
@@ -36,11 +39,12 @@ fun CityPoiMapView(
         }
     }
 
-    LaunchedEffect(pois) {
+    LaunchedEffect(pois, darkTheme) {
         updateMarkersAndViewport(
             mapView = mapView,
             pois = pois,
-            onPoiClick = onPoiClick
+            onPoiClick = onPoiClick,
+            darkTheme = darkTheme
         )
     }
 
@@ -68,10 +72,12 @@ private fun createMapView(context: Context): MapView {
 private suspend fun updateMarkersAndViewport(
     mapView: MapView,
     pois: List<POI>,
-    onPoiClick: (Int) -> Unit
+    onPoiClick: (Int) -> Unit,
+    darkTheme: Boolean
 ) {
     withContext(Dispatchers.Main) {
         mapView.overlays.clear()
+        applyMapTheme(mapView, darkTheme)
 
         val points = mutableListOf<GeoPoint>()
 

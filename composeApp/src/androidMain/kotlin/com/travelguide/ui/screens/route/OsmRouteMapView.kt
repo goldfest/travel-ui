@@ -1,6 +1,7 @@
 package com.travelguide.ui.screens.route
 
 import android.content.Context
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -27,6 +28,7 @@ fun OsmRouteMapView(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val darkTheme = isSystemInDarkTheme()
     val mapView = rememberMapViewWithLifecycle(context, lifecycleOwner)
 
     var lastRenderedKey by remember { mutableStateOf<String?>(null) }
@@ -35,6 +37,9 @@ fun OsmRouteMapView(
         factory = { mapView },
         modifier = modifier,
         update = { mv ->
+            mv.setTileSource(TileSourceFactory.MAPNIK)
+            applyMapTheme(mv, darkTheme)
+
             val currentDay = day ?: return@AndroidView
             val pointsKey = currentDay.points.joinToString("|") {
                 "${it.routePointId}:${it.orderIndex}:${it.latitude}:${it.longitude}"
@@ -42,11 +47,11 @@ fun OsmRouteMapView(
             val polylineKey = currentDay.polyline?.coordinates
                 ?.joinToString("|") { "${it.latitude}:${it.longitude}" }
                 .orEmpty()
-            val renderKey = "${currentDay.dayNumber}_${selectedPointId}_${pointsKey}_${polylineKey}"
+            val renderKey = "${darkTheme}_${currentDay.dayNumber}_${selectedPointId}_${pointsKey}_${polylineKey}"
 
             if (lastRenderedKey != renderKey) {
                 mv.overlays.clear()
-                buildRoutePolyline(currentDay)?.let { mv.overlays.add(it) }
+                mv.overlays.addAll(buildRoutePolyline(currentDay))
 
                 currentDay.points.forEach { point ->
                     mv.overlays.add(
@@ -80,6 +85,8 @@ private fun rememberMapViewWithLifecycle(
             setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
             controller.setZoom(12.0)
+            minZoomLevel = 4.0
+            maxZoomLevel = 20.0
         }
     }
 

@@ -11,7 +11,8 @@
         android:allowBackup="true"
         android:usesCleartextTraffic="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="TravelGuide">
+        android:label="TravelGuide"
+        android:theme="@style/Theme.TravelGuide">
 
         <activity
             android:name=".MainActivity"

@@ -1,24 +1,38 @@
-// screens/auth/LoginScreen.kt
 package com.travelguide.ui.screens.auth
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.travelguide.auth.AuthUiState
 
-@OptIn(ExperimentalMaterial3Api::class)
+import androidx.compose.ui.res.painterResource
+import com.travelguide.R
 @Composable
 fun LoginScreen(
     state: AuthUiState,
@@ -29,179 +43,138 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
-    // Ошибка с сервера (подстрой под свой AuthUiState, если поле называется иначе)
-    val errorText: String? = state.error
-
-    // ---- распознаём типы ошибок (под твой бэкенд)
+    val errorText = state.error
     val isBadCredentials =
         errorText?.contains("Invalid email or password", ignoreCase = true) == true ||
-                errorText?.contains("Невер", ignoreCase = true) == true // если русифицируешь
+            errorText?.contains("Невер", ignoreCase = true) == true
+    val isUserNotFound = errorText?.contains("Пользователь не найден", ignoreCase = true) == true
+    val isBlocked = errorText?.contains("Пользователь заблокирован", ignoreCase = true) == true
+    val isInactive = errorText?.contains("Аккаунт не активен", ignoreCase = true) == true
 
-    val isUserNotFound =
-        errorText?.contains("Пользователь не найден", ignoreCase = true) == true
-
-    val isBlocked =
-        errorText?.contains("Пользователь заблокирован", ignoreCase = true) == true
-
-    val isInactive =
-        errorText?.contains("Аккаунт не активен", ignoreCase = true) == true
-
-    // Что подсвечивать:
-    // - неверные креды/нет пользователя -> подсветим email (и можно пароль тоже)
     val emailError = isBadCredentials || isUserNotFound
-    val passError = isBadCredentials
+    val passwordError = isBadCredentials
 
-    // Сообщения под полями
-    val emailSupporting: String? = when {
+    val inlineError = when {
         isUserNotFound -> "Пользователь не найден"
         isBadCredentials -> "Неверный email или пароль"
+        isBlocked -> "Пользователь заблокирован"
+        isInactive -> "Аккаунт не активен"
+        !errorText.isNullOrBlank() -> errorText
         else -> null
     }
-    val passSupporting: String? = when {
-        isBadCredentials -> "Проверьте пароль"
-        else -> null
-    }
-
-    // Общая ошибка (не привязана к конкретному полю)
-    val showGenericError =
-        !errorText.isNullOrBlank() &&
-                !emailError &&
-                !passError &&
-                !isBlocked &&
-                !isInactive
 
     val canSubmit = email.isNotBlank() && password.isNotBlank() && !state.isLoading
 
-    Scaffold(
-        topBar = { TopAppBar(title = { Text("Вход") }) }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
+    ExplorerAuthScreen(
+        title = "ВОЙТИ",
+        backgroundPainter = painterResource(R.drawable.auth_bg),
+        formContent = {
+            LoginFields(
+                email = email,
+                onEmailChange = { email = it },
+                password = password,
+                onPasswordChange = { password = it },
+                passwordVisible = passwordVisible,
+                onTogglePassword = { passwordVisible = !passwordVisible },
+                state = state,
+                emailError = emailError,
+                passwordError = passwordError,
+                inlineError = inlineError,
+                onSubmit = { onLoginClick(email.trim(), password) },
+                canSubmit = canSubmit
+            )
+        },
+        bottomContent = {
             Text(
-                text = "TravelGuide",
-                style = MaterialTheme.typography.headlineLarge,
-                modifier = Modifier.padding(bottom = 8.dp)
+                text = "Нет аккаунта?",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.82f),
+                textAlign = TextAlign.Center
             )
-            Text(
-                text = "Добро пожаловать!",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 32.dp)
-            )
+            ExplorerLinkText(text = "РЕГИСТРАЦИЯ", onClick = onRegisterClick, color = Color.White)
+        }
+    )
+}
 
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text("Email") },
-                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                enabled = !state.isLoading,
-                isError = emailError,
-                supportingText = {
-                    if (!emailSupporting.isNullOrBlank()) Text(emailSupporting)
-                }
-            )
+@Composable
+private fun ColumnScope.LoginFields(
+    email: String,
+    onEmailChange: (String) -> Unit,
+    password: String,
+    onPasswordChange: (String) -> Unit,
+    passwordVisible: Boolean,
+    onTogglePassword: () -> Unit,
+    state: AuthUiState,
+    emailError: Boolean,
+    passwordError: Boolean,
+    inlineError: String?,
+    onSubmit: () -> Unit,
+    canSubmit: Boolean
+) {
+    OutlinedTextField(
+        value = email,
+        onValueChange = onEmailChange,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        placeholder = { Text("Логин") },
+        leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+        enabled = !state.isLoading,
+        isError = emailError,
+        shape = MaterialTheme.shapes.large
+    )
 
-            Spacer(modifier = Modifier.height(16.dp))
+    Spacer(Modifier.height(12.dp))
 
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("Пароль") },
-                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
-                trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(
-                            imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = if (passwordVisible) "Скрыть пароль" else "Показать пароль"
-                        )
-                    }
-                },
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                enabled = !state.isLoading,
-                isError = passError,
-                supportingText = {
-                    if (!passSupporting.isNullOrBlank()) Text(passSupporting)
-                }
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Блокировка/неактивен — компактно под полями (не сверху)
-            if (isBlocked || isInactive) {
-                val msg = when {
-                    isBlocked -> "Пользователь заблокирован"
-                    else -> "Аккаунт не активен"
-                }
-                Text(
-                    text = msg,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.fillMaxWidth()
+    OutlinedTextField(
+        value = password,
+        onValueChange = onPasswordChange,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        placeholder = { Text("Пароль") },
+        leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+        trailingIcon = {
+            IconButton(onClick = onTogglePassword) {
+                Icon(
+                    imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                    contentDescription = null
                 )
-                Spacer(modifier = Modifier.height(8.dp))
             }
+        },
+        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        enabled = !state.isLoading,
+        isError = passwordError,
+        shape = MaterialTheme.shapes.large
+    )
 
-            // “прочая” ошибка — тоже снизу, маленьким текстом
-            if (showGenericError) {
-                Text(
-                    text = errorText ?: "",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.fillMaxWidth()
+    if (!inlineError.isNullOrBlank()) {
+        Spacer(Modifier.height(10.dp))
+        Text(
+            text = inlineError,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center
+        )
+    }
+
+    Spacer(Modifier.height(18.dp))
+
+    ExplorerPrimaryButton(
+        text = "ОТПРАВИТЬ",
+        onClick = onSubmit,
+        modifier = Modifier.fillMaxWidth(),
+        enabled = canSubmit,
+        trailing = {
+            if (state.isLoading) {
+                Spacer(Modifier.width(8.dp))
+                CircularProgressIndicator(
+                    modifier = Modifier.height(18.dp),
+                    strokeWidth = 2.dp,
+                    color = Color.White
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TextButton(onClick = { /* TODO */ }, enabled = !state.isLoading) {
-                    Text("Забыли пароль?")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(
-                onClick = { onLoginClick(email.trim(), password) },
-                modifier = Modifier.fillMaxWidth().height(50.dp),
-                enabled = canSubmit
-            ) {
-                if (state.isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                } else {
-                    Text("Войти", style = MaterialTheme.typography.titleMedium)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Text("Нет аккаунта? ")
-                TextButton(onClick = onRegisterClick, enabled = !state.isLoading) {
-                    Text("Зарегистрироваться")
-                }
             }
         }
-    }
+    )
 }

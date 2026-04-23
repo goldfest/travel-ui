@@ -1,266 +1,198 @@
-// screens/auth/RegisterScreen.kt
 package com.travelguide.ui.screens.auth
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollState
 import com.travelguide.auth.AuthUiState
 
-@OptIn(ExperimentalMaterial3Api::class)
+import androidx.compose.ui.res.painterResource
+import com.travelguide.R
+
 @Composable
 fun RegisterScreen(
     state: AuthUiState,
-    onRegisterClick: (email: String, username: String, password: String, phone: String?) -> Unit,
+    onRegisterClick: (email: String, username: String, password: String, phone: String) -> Unit,
     onLoginClick: () -> Unit
 ) {
-    var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var confirmPasswordVisible by remember { mutableStateOf(false) }
-    var termsAccepted by remember { mutableStateOf(false) }
 
-    // ---- password rules
-    val passMin8 = password.length >= 8
-    val passLettersDigits = password.any { it.isLetter() } && password.any { it.isDigit() }
-    val passMatch = password.isNotEmpty() && password == confirmPassword
-    val passwordOk = passMin8 && passLettersDigits && passMatch
-
-    // ---- server error
-    val errorText: String? = state.error
-
-    // Сервер теперь отвечает по-русски
-    val isEmailTaken = errorText?.contains("Почта уже используется", ignoreCase = true) == true
-    val isUsernameTaken = errorText?.contains("Логин уже используется", ignoreCase = true) == true
-
-    // (опционально) общая ошибка, которую не привязать к полям — можно показать снизу маленьким текстом
-    // но раз ты хочешь убрать "надпись сверху", делаем нейтрально:
-    val showGenericError =
-        !errorText.isNullOrBlank() && !isEmailTaken && !isUsernameTaken
-
-    val canSubmit =
-        username.isNotBlank() &&
-                email.isNotBlank() &&
-                passwordOk &&
-                termsAccepted &&
-                !state.isLoading
-
-    Scaffold(
-        topBar = { TopAppBar(title = { Text("Регистрация") }) }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 24.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = "Создать аккаунт",
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            // ---- Username (логин)
-            OutlinedTextField(
-                value = username,
-                onValueChange = { username = it },
-                label = { Text("Логин") },
-                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                enabled = !state.isLoading,
-                isError = isUsernameTaken,
-                supportingText = {
-                    if (isUsernameTaken) Text("Этот логин уже используется")
-                }
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // ---- Email
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text("Email") },
-                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                enabled = !state.isLoading,
-                isError = isEmailTaken,
-                supportingText = {
-                    if (isEmailTaken) Text("Эта почта уже используется")
-                }
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // ---- Password
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("Пароль") },
-                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
-                trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(
-                            imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = if (passwordVisible) "Скрыть пароль" else "Показать пароль"
-                        )
-                    }
-                },
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                enabled = !state.isLoading
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // ---- Confirm password
-            OutlinedTextField(
-                value = confirmPassword,
-                onValueChange = { confirmPassword = it },
-                label = { Text("Подтвердите пароль") },
-                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
-                trailingIcon = {
-                    IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
-                        Icon(
-                            imageVector = if (confirmPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = if (confirmPasswordVisible) "Скрыть пароль" else "Показать пароль"
-                        )
-                    }
-                },
-                visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                enabled = !state.isLoading
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // ---- Requirements
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                PasswordRequirement("Минимум 8 символов", passMin8)
-                PasswordRequirement("Содержит буквы и цифры", passLettersDigits)
-                PasswordRequirement("Пароли совпадают", passMatch)
-            }
-
-            // ---- Общая ошибка (если не email/логин) — НЕ сверху, а компактно под требованиями
-            if (showGenericError) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = errorText ?: "",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // ---- Terms
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Checkbox(
-                    checked = termsAccepted,
-                    onCheckedChange = { termsAccepted = it },
-                    enabled = !state.isLoading
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "Я согласен с ", style = MaterialTheme.typography.bodyMedium)
-                TextButton(onClick = { /* TODO */ }, enabled = !state.isLoading) {
-                    Text("условиями использования")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // ---- Submit
-            Button(
-                onClick = { onRegisterClick(email.trim(), username.trim(), password, null) },
-                modifier = Modifier.fillMaxWidth().height(50.dp),
-                enabled = canSubmit
-            ) {
-                if (state.isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                } else {
-                    Text("Зарегистрироваться", style = MaterialTheme.typography.titleMedium)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Divider(modifier = Modifier.weight(1f))
-                Text(
-                    "или",
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Divider(modifier = Modifier.weight(1f))
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Text("Уже есть аккаунт? ")
-                TextButton(onClick = onLoginClick, enabled = !state.isLoading) {
-                    Text("Войти")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-        }
+    val inlineError = when {
+        state.error.isNullOrBlank() -> null
+        state.error!!.contains("already", ignoreCase = true) -> "Такой пользователь уже существует"
+        else -> state.error
     }
+
+    val canSubmit = listOf(email, username, password, phone).all { it.isNotBlank() } && !state.isLoading
+
+    ExplorerAuthScreen(
+        title = "РЕГИСТРАЦИЯ",
+        backgroundPainter = painterResource(R.drawable.auth_bg),
+        formContent = {
+            RegisterFields(
+                email = email,
+                onEmailChange = { email = it },
+                username = username,
+                onUsernameChange = { username = it },
+                password = password,
+                onPasswordChange = { password = it },
+                phone = phone,
+                onPhoneChange = { phone = it },
+                passwordVisible = passwordVisible,
+                onTogglePassword = { passwordVisible = !passwordVisible },
+                inlineError = inlineError,
+                state = state,
+                canSubmit = canSubmit,
+                onSubmit = { onRegisterClick(email.trim(), username.trim(), password, phone.trim()) }
+            )
+        },
+        bottomContent = {
+            Text(
+                text = "Есть аккаунт?",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.82f),
+                textAlign = TextAlign.Center
+            )
+            ExplorerLinkText(text = "ВОЙТИ", onClick = onLoginClick, color = Color.White)
+        }
+    )
 }
 
 @Composable
-fun PasswordRequirement(text: String, isValid: Boolean) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 4.dp)) {
-        Icon(
-            imageVector = if (isValid) Icons.Default.CheckCircle else Icons.Default.Circle,
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = if (isValid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-        )
-        Spacer(modifier = Modifier.width(8.dp))
+private fun ColumnScope.RegisterFields(
+    email: String,
+    onEmailChange: (String) -> Unit,
+    username: String,
+    onUsernameChange: (String) -> Unit,
+    password: String,
+    onPasswordChange: (String) -> Unit,
+    phone: String,
+    onPhoneChange: (String) -> Unit,
+    passwordVisible: Boolean,
+    onTogglePassword: () -> Unit,
+    inlineError: String?,
+    state: AuthUiState,
+    canSubmit: Boolean,
+    onSubmit: () -> Unit
+) {
+    OutlinedTextField(
+        value = username,
+        onValueChange = onUsernameChange,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        placeholder = { Text("Логин") },
+        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+        enabled = !state.isLoading,
+        shape = MaterialTheme.shapes.large
+    )
+
+    Spacer(Modifier.height(12.dp))
+
+    OutlinedTextField(
+        value = password,
+        onValueChange = onPasswordChange,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        placeholder = { Text("Пароль") },
+        leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+        trailingIcon = {
+            IconButton(onClick = onTogglePassword) {
+                Icon(
+                    imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                    contentDescription = null
+                )
+            }
+        },
+        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        enabled = !state.isLoading,
+        shape = MaterialTheme.shapes.large
+    )
+
+    Spacer(Modifier.height(12.dp))
+
+    OutlinedTextField(
+        value = phone,
+        onValueChange = onPhoneChange,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        placeholder = { Text("Телефон") },
+        leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+        enabled = !state.isLoading,
+        shape = MaterialTheme.shapes.large
+    )
+
+    Spacer(Modifier.height(12.dp))
+
+    OutlinedTextField(
+        value = email,
+        onValueChange = onEmailChange,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        placeholder = { Text("Почта") },
+        leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+        enabled = !state.isLoading,
+        shape = MaterialTheme.shapes.large
+    )
+
+    if (!inlineError.isNullOrBlank()) {
+        Spacer(Modifier.height(10.dp))
         Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall,
-            color = if (isValid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+            text = inlineError,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center
         )
     }
+
+    Spacer(Modifier.height(18.dp))
+
+    ExplorerPrimaryButton(
+        text = "ОТПРАВИТЬ",
+        onClick = onSubmit,
+        modifier = Modifier.fillMaxWidth(),
+        enabled = canSubmit,
+        trailing = {
+            if (state.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.height(18.dp),
+                    strokeWidth = 2.dp,
+                    color = Color.White
+                )
+            }
+        }
+    )
 }

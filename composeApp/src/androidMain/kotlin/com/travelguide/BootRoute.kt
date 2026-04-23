@@ -1,35 +1,31 @@
 package com.travelguide
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.travelguide.network.UnauthorizedException
-import kotlinx.coroutines.launch
+import com.travelguide.ui.screens.auth.ExplorerWelcomeScreen
+
+import androidx.compose.ui.res.painterResource
+import com.travelguide.R
 
 private sealed interface BootState {
-    data object Loading : BootState
-    data class Error(val message: String) : BootState
+    data object Checking : BootState
+    data object Welcome : BootState
 }
 
 @Composable
@@ -38,14 +34,13 @@ fun BootRoute(
     onGoLogin: () -> Unit,
     onGoMain: () -> Unit
 ) {
-    var state by remember { mutableStateOf<BootState>(BootState.Loading) }
-    val scope = rememberCoroutineScope()
+    var state by remember { mutableStateOf<BootState>(BootState.Checking) }
 
-    suspend fun check() {
-        state = BootState.Loading
+    suspend fun checkSession() {
+        state = BootState.Checking
 
         if (!container.authRepository.isLoggedIn()) {
-            onGoLogin()
+            state = BootState.Welcome
             return
         }
 
@@ -54,39 +49,42 @@ fun BootRoute(
             onGoMain()
         } catch (e: UnauthorizedException) {
             container.authRepository.logout()
-            onGoLogin()
+            state = BootState.Welcome
         } catch (_: Exception) {
             onGoMain()
         }
     }
 
-    LaunchedEffect(Unit) { check() }
+    LaunchedEffect(Unit) { checkSession() }
 
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        when (val s = state) {
-            BootState.Loading -> CircularProgressIndicator()
-            is BootState.Error -> {
-                Card(Modifier.padding(16.dp)) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("Не удалось запустить приложение", style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.height(8.dp))
-                        Text(s.message, style = MaterialTheme.typography.bodyMedium)
-                        Spacer(Modifier.height(16.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Button(onClick = { scope.launch { check() } }) { Text("Повторить") }
-                            OutlinedButton(onClick = {
-                                scope.launch {
-                                    container.authRepository.logout()
-                                    onGoLogin()
-                                }
-                            }) { Text("Войти заново") }
-                        }
-                    }
-                }
+    when (state) {
+        BootState.Checking -> {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator()
+                Text(
+                    text = "Подготавливаем ваше путешествие",
+                    modifier = Modifier.padding(top = 14.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
             }
+        }
+
+        BootState.Welcome -> {
+            ExplorerWelcomeScreen(
+                title = "НАЗВАНИЕ",
+                headline = "ПУТЕШЕСТВИЯ\nКРУТО",
+                primaryActionLabel = "НАЧАТЬ",
+                secondaryLabel = "Есть аккаунт? Войти.",
+                onPrimaryAction = onGoLogin,
+                onSecondaryAction = onGoLogin,
+                backgroundPainter = painterResource(R.drawable.auth_bg)
+            )
         }
     }
 }
