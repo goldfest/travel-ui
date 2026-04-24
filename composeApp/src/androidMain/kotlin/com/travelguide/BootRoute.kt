@@ -21,7 +21,6 @@ import com.travelguide.network.UnauthorizedException
 import com.travelguide.ui.screens.auth.ExplorerWelcomeScreen
 
 import androidx.compose.ui.res.painterResource
-import com.travelguide.R
 
 private sealed interface BootState {
     data object Checking : BootState
@@ -78,7 +77,7 @@ fun BootRoute(
         BootState.Welcome -> {
             ExplorerWelcomeScreen(
                 title = "НАЗВАНИЕ",
-                headline = "ПУТЕШЕСТВИЯ\nКРУТО",
+                headline = "ПУТЕШЕСТВИЯ -\nКРУТО",
                 primaryActionLabel = "НАЧАТЬ",
                 secondaryLabel = "Есть аккаунт? Войти.",
                 onPrimaryAction = onGoLogin,

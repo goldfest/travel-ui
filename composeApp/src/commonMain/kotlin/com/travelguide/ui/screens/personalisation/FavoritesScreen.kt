@@ -41,7 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.travelguide.domain.models.Favorite
 import com.travelguide.domain.models.PoiCardUiModel
-import com.travelguide.ui.components.cards.POICard
+import com.travelguide.components.cards.POICard
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable

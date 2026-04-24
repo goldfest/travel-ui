@@ -42,7 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.travelguide.domain.models.City
 import com.travelguide.domain.models.PoiCardUiModel
-import com.travelguide.ui.components.cards.POICard
+import com.travelguide.components.cards.POICard
 
 @Composable
 fun SearchScreen(

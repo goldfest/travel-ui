@@ -35,8 +35,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.travelguide.city.CityPoiMapUiState
 import com.travelguide.city.CityPoiMapView
-import com.travelguide.domain.models.PoiCardUiModel
-import com.travelguide.ui.components.cards.POICard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

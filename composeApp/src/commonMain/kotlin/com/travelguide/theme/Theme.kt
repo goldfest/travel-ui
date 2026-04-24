@@ -1,6 +1,5 @@
 package com.travelguide.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
@@ -29,52 +28,67 @@ val ExplorerForestMuted = Color(0xFF223529)
 val ExplorerMapLine = Color(0xFF2D9B63)
 val ExplorerMapLineAccent = Color(0xFF9BE7B7)
 
+// Общая палитра нового стиля: dark travel / photo-first.
+val TravelDark = Color(0xFF0B0B0C)
+val TravelPanel = Color(0xFF1A1A1B)
+val TravelPanelSoft = Color(0xFF222225)
+val TravelTextPrimary = Color(0xFFFFFFFF)
+val TravelTextSecondary = Color(0xFFA7A7AD)
+val TravelAccent = Color(0xFF5BE58C)
+val TravelAccentSoft = Color(0xFFB8F7C9)
+val TravelAccentDeep = Color(0xFF1F8F4D)
+val TravelGlow = Color(0x335BE58C)
+val TravelGlass = Color(0xCC202124)
+val TravelSuccess = Color(0xFF6FCF97)
+val TravelDanger = Color(0xFFFF9D97)
+val TravelScrim = Color(0x99000000)
+
 private val LightColorScheme = lightColorScheme(
-    primary = ExplorerGreen,
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFFD9F3E3),
-    onPrimaryContainer = ExplorerInk,
-    secondary = ExplorerGreenSoft,
-    onSecondary = ExplorerInk,
-    secondaryContainer = Color(0xFFE5F8EC),
-    onSecondaryContainer = ExplorerInk,
+    primary = TravelAccent,
+    onPrimary = TravelDark,
+    primaryContainer = TravelPanelSoft,
+    onPrimaryContainer = TravelTextPrimary,
+    secondary = TravelSuccess,
+    onSecondary = TravelDark,
+    secondaryContainer = TravelPanelSoft,
+    onSecondaryContainer = TravelTextPrimary,
     tertiary = ExplorerOrange,
-    onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFFFE8D5),
-    onTertiaryContainer = Color(0xFF4A290C),
-    background = ExplorerMist,
-    onBackground = ExplorerInk,
-    surface = ExplorerSurface,
-    onSurface = ExplorerInk,
-    surfaceVariant = Color(0xFFF7FBF7),
-    onSurfaceVariant = ExplorerInkSoft,
-    outline = ExplorerBorder,
-    error = ExplorerError,
-    onError = Color.White
+    onTertiary = TravelDark,
+    tertiaryContainer = Color(0xFF3A2A18),
+    onTertiaryContainer = Color(0xFFFFE6CC),
+    background = TravelDark,
+    onBackground = TravelTextPrimary,
+    surface = TravelPanel,
+    onSurface = TravelTextPrimary,
+    surfaceVariant = TravelPanelSoft,
+    onSurfaceVariant = TravelTextSecondary,
+    outline = Color(0xFF2E2E32),
+    error = TravelDanger,
+    onError = TravelDark
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = ExplorerGreenSoft,
-    onPrimary = ExplorerForestDark,
-    primaryContainer = Color(0xFF1D4E31),
-    onPrimaryContainer = Color(0xFFDDF6E7),
-    secondary = Color(0xFF99E4B6),
-    onSecondary = ExplorerForestDark,
-    secondaryContainer = Color(0xFF1A3A27),
-    onSecondaryContainer = Color(0xFFDDF6E7),
+    primary = TravelAccent,
+    onPrimary = TravelDark,
+    primaryContainer = TravelPanelSoft,
+    onPrimaryContainer = TravelTextPrimary,
+    secondary = TravelSuccess,
+    onSecondary = TravelDark,
+    secondaryContainer = TravelPanelSoft,
+    onSecondaryContainer = TravelTextPrimary,
     tertiary = Color(0xFFFFC98E),
-    onTertiary = ExplorerForestDark,
-    tertiaryContainer = Color(0xFF5A3A17),
+    onTertiary = TravelDark,
+    tertiaryContainer = Color(0xFF3A2A18),
     onTertiaryContainer = Color(0xFFFFE6CC),
-    background = ExplorerForestDark,
-    onBackground = Color(0xFFE8F1EA),
-    surface = ExplorerForestSurface,
-    onSurface = Color(0xFFE8F1EA),
-    surfaceVariant = ExplorerForestMuted,
-    onSurfaceVariant = Color(0xFFB9CABC),
-    outline = Color(0xFF395344),
-    error = Color(0xFFFF9D97),
-    onError = ExplorerForestDark
+    background = TravelDark,
+    onBackground = TravelTextPrimary,
+    surface = TravelPanel,
+    onSurface = TravelTextPrimary,
+    surfaceVariant = TravelPanelSoft,
+    onSurfaceVariant = TravelTextSecondary,
+    outline = Color(0xFF2E2E32),
+    error = TravelDanger,
+    onError = TravelDark
 )
 
 private val AppTypography = Typography(
@@ -101,7 +115,7 @@ private val AppShapes = Shapes(
 
 @Composable
 fun AppTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = true,
     content: @Composable () -> Unit
 ) {
     MaterialTheme(

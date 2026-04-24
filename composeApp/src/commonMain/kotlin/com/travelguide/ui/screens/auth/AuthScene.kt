@@ -1,11 +1,13 @@
 package com.travelguide.ui.screens.auth
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -18,38 +20,43 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-
-import androidx.compose.ui.graphics.Outline
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
-
-
-
+import androidx.compose.ui.unit.dp
+import com.travelguide.theme.TravelAccent
+import com.travelguide.theme.TravelAccentSoft
+import com.travelguide.theme.TravelGlow
+import com.travelguide.theme.TravelDark
+import com.travelguide.theme.TravelTextPrimary
 
 @Composable
 fun ExplorerWelcomeScreen(
@@ -66,12 +73,12 @@ fun ExplorerWelcomeScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF071A12))
+            .background(TravelDark)
     ) {
         ExplorerMediaCard(
             modifier = Modifier.fillMaxSize(),
             backgroundPainter = backgroundPainter,
-            shape = RoundedCornerShape(0.dp)
+            shape = AuthHeroShape(progress = 0f)
         )
 
         Box(
@@ -80,9 +87,9 @@ fun ExplorerWelcomeScreen(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color.Black.copy(alpha = 0.10f),
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.45f)
+                            Color.Black.copy(alpha = 0.18f),
+                            Color.Black.copy(alpha = 0.18f),
+                            Color.Black.copy(alpha = 0.54f)
                         )
                     )
                 )
@@ -93,45 +100,48 @@ fun ExplorerWelcomeScreen(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(horizontal = 24.dp, vertical = 18.dp),
+                .padding(horizontal = 24.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.weight(1f))
 
             Box(
                 modifier = Modifier
-                    .size(72.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(Color.White.copy(alpha = 0.92f)),
+                    .size(86.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(TravelAccent.copy(alpha = 0.92f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = topBadge,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = TravelDark
                 )
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(18.dp))
 
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.headlineMedium,
                 color = Color.White,
-                fontWeight = FontWeight.ExtraBold
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(8.dp))
 
             Text(
                 text = headline,
-                style = MaterialTheme.typography.headlineMedium,
-                color = Color.White,
-                fontWeight = FontWeight.ExtraBold,
-                modifier = Modifier.align(Alignment.Start)
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.White.copy(alpha = 0.90f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.weight(1f))
 
             ExplorerPrimaryButton(
                 text = primaryActionLabel,
@@ -144,7 +154,7 @@ fun ExplorerWelcomeScreen(
             ExplorerLinkText(
                 text = secondaryLabel,
                 onClick = onSecondaryAction,
-                color = Color.White.copy(alpha = 0.88f)
+                color = Color.White.copy(alpha = 0.90f)
             )
         }
     }
@@ -158,52 +168,60 @@ fun ExplorerAuthScreen(
     formContent: @Composable ColumnScope.() -> Unit,
     bottomContent: @Composable ColumnScope.() -> Unit
 ) {
+    var targetProgress by remember { mutableFloatStateOf(0f) }
+    val shapeProgress by animateFloatAsState(
+        targetValue = targetProgress,
+        animationSpec = tween(
+            durationMillis = 850,
+            easing = FastOutSlowInEasing
+        ),
+        label = "authHeroShapeProgress"
+    )
+
+    LaunchedEffect(Unit) {
+        targetProgress = 1f
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF04150E))
+            .background(TravelDark)
     ) {
-        Column(
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.ExtraBold,
+            color = TravelTextPrimary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(top = 44.dp, start = 28.dp, end = 28.dp)
+        )
+
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .verticalScroll(rememberScrollState())
+                .padding(top = 118.dp)
         ) {
-            Spacer(Modifier.height(12.dp))
-
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.ExtraBold,
-                color = Color.White,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
+            ExplorerMediaPanel(
+                modifier = Modifier.fillMaxSize(),
+                backgroundPainter = backgroundPainter,
+                shapeProgress = shapeProgress
             )
 
-            Spacer(Modifier.height(18.dp))
-
-            ExplorerMediaPanel(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f, fill = false),
-                backgroundPainter = backgroundPainter
+                    .fillMaxSize()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 38.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 28.dp, vertical = 26.dp),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Spacer(Modifier.height(120.dp))
-                    formContent()
-                    Spacer(Modifier.height(28.dp))
-                    bottomContent()
-                    Spacer(Modifier.height(16.dp))
-                }
+                Spacer(Modifier.weight(0.82f))
+                formContent()
+                Spacer(Modifier.height(28.dp))
+                bottomContent()
+                Spacer(Modifier.weight(1f))
             }
         }
     }
@@ -220,20 +238,24 @@ fun ExplorerPrimaryButton(
     Button(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.height(54.dp),
+        modifier = modifier.height(48.dp),
         shape = RoundedCornerShape(999.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.45f),
-            disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+            containerColor = TravelAccent,
+            contentColor = TravelDark,
+            disabledContainerColor = TravelAccent.copy(alpha = 0.42f),
+            disabledContentColor = TravelDark.copy(alpha = 0.65f)
         )
     ) {
         Row(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            Text(
+                text = text,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.ExtraBold
+            )
             trailing?.invoke()
         }
     }
@@ -243,10 +265,15 @@ fun ExplorerPrimaryButton(
 fun ExplorerLinkText(
     text: String,
     onClick: () -> Unit,
-    color: Color = MaterialTheme.colorScheme.onSurfaceVariant
+    color: Color = Color.White
 ) {
     TextButton(onClick = onClick) {
-        Text(text = text, style = MaterialTheme.typography.bodySmall, color = color)
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleMedium,
+            color = color,
+            fontWeight = FontWeight.ExtraBold
+        )
     }
 }
 
@@ -254,17 +281,23 @@ fun ExplorerLinkText(
 private fun ExplorerMediaPanel(
     modifier: Modifier = Modifier,
     backgroundPainter: Painter? = null,
-    content: @Composable BoxScope.() -> Unit
+    shapeProgress: Float
 ) {
+    val shape = remember(shapeProgress) { AuthHeroShape(progress = shapeProgress) }
+
     Box(
-        modifier = modifier
-            .fillMaxSize()
-            .clip(AuthHeroShape)
+        modifier = modifier.clip(shape)
     ) {
         ExplorerMediaCard(
             modifier = Modifier.fillMaxSize(),
             backgroundPainter = backgroundPainter,
-            shape = AuthHeroShape
+            shape = shape
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.18f))
         )
 
         Box(
@@ -272,16 +305,14 @@ private fun ExplorerMediaPanel(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(alpha = 0.08f),
-                            Color.Black.copy(alpha = 0.18f),
-                            Color.Black.copy(alpha = 0.38f)
+                        colors = listOf(
+                            TravelGlow,
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.28f)
                         )
                     )
                 )
         )
-
-        content()
     }
 }
 
@@ -327,17 +358,9 @@ private fun ScenicNatureBackdrop(modifier: Modifier = Modifier) {
 
         val fog = Path().apply {
             moveTo(0f, size.height * 0.24f)
-            cubicTo(
-                size.width * 0.18f, size.height * 0.16f,
-                size.width * 0.42f, size.height * 0.30f,
-                size.width, size.height * 0.20f
-            )
+            cubicTo(size.width * 0.18f, size.height * 0.16f, size.width * 0.42f, size.height * 0.30f, size.width, size.height * 0.20f)
             lineTo(size.width, size.height * 0.34f)
-            cubicTo(
-                size.width * 0.70f, size.height * 0.27f,
-                size.width * 0.40f, size.height * 0.38f,
-                0f, size.height * 0.30f
-            )
+            cubicTo(size.width * 0.70f, size.height * 0.27f, size.width * 0.40f, size.height * 0.38f, 0f, size.height * 0.30f)
             close()
         }
         drawPath(fog, color = Color.White.copy(alpha = 0.14f))
@@ -354,10 +377,7 @@ private fun ScenicNatureBackdrop(modifier: Modifier = Modifier) {
             lineTo(0f, size.height)
             close()
         }
-        drawPath(
-            mountainBack,
-            brush = Brush.verticalGradient(listOf(Color(0xFF6B7471), Color(0xFF2A3530)))
-        )
+        drawPath(mountainBack, brush = Brush.verticalGradient(listOf(Color(0xFF6B7471), Color(0xFF2A3530))))
 
         val mountainFront = Path().apply {
             moveTo(0f, size.height * 0.62f)
@@ -371,23 +391,12 @@ private fun ScenicNatureBackdrop(modifier: Modifier = Modifier) {
             lineTo(0f, size.height)
             close()
         }
-        drawPath(
-            mountainFront,
-            brush = Brush.verticalGradient(listOf(Color(0xFF434C48), Color(0xFF151C17)))
-        )
+        drawPath(mountainFront, brush = Brush.verticalGradient(listOf(Color(0xFF434C48), Color(0xFF151C17))))
 
         val river = Path().apply {
             moveTo(size.width * 0.12f, size.height)
-            cubicTo(
-                size.width * 0.18f, size.height * 0.84f,
-                size.width * 0.48f, size.height * 0.78f,
-                size.width * 0.42f, size.height * 0.60f
-            )
-            cubicTo(
-                size.width * 0.34f, size.height * 0.42f,
-                size.width * 0.12f, size.height * 0.36f,
-                size.width * 0.04f, size.height * 0.20f
-            )
+            cubicTo(size.width * 0.18f, size.height * 0.84f, size.width * 0.48f, size.height * 0.78f, size.width * 0.42f, size.height * 0.60f)
+            cubicTo(size.width * 0.34f, size.height * 0.42f, size.width * 0.12f, size.height * 0.36f, size.width * 0.04f, size.height * 0.20f)
             lineTo(0f, size.height)
             close()
         }
@@ -400,7 +409,7 @@ private fun ScenicNatureBackdrop(modifier: Modifier = Modifier) {
             )
         )
 
-        clipPath(Path().apply { addRect(androidx.compose.ui.geometry.Rect(Offset.Zero, size)) }) {
+        clipPath(Path().apply { addRect(Rect(Offset.Zero, size)) }) {
             drawRect(Color.Black.copy(alpha = 0.05f), blendMode = BlendMode.Multiply)
         }
 
@@ -416,39 +425,45 @@ private fun ScenicNatureBackdrop(modifier: Modifier = Modifier) {
     }
 }
 
-object AuthHeroShape : Shape {
+private class AuthHeroShape(
+    private val progress: Float
+) : Shape {
     override fun createOutline(
         size: Size,
         layoutDirection: LayoutDirection,
         density: Density
     ): Outline {
+        val p = progress.coerceIn(0f, 1f)
+
+        val topLeftY = size.height * 0.18f * p
+        val bottomLeftY = size.height * (1f - 0.10f * p)
+
         val path = Path().apply {
-            moveTo(0f, size.height * 0.18f)
+            moveTo(0f, topLeftY)
 
-            quadraticBezierTo(
-                size.width * 0.18f, size.height * 0.02f,
-                size.width * 0.72f, size.height * 0.00f
-            )
-
-            quadraticBezierTo(
-                size.width * 0.92f, size.height * 0.00f,
-                size.width, size.height * 0.00f
+            cubicTo(
+                size.width * 0.24f,
+                size.height * 0.04f * p,
+                size.width * 0.62f,
+                size.height * 0.04f * p,
+                size.width,
+                0f
             )
 
             lineTo(size.width, size.height)
 
-            quadraticBezierTo(
-                size.width * 0.72f, size.height * 0.98f,
-                size.width * 0.22f, size.height * 1.00f
-            )
-
-            quadraticBezierTo(
-                size.width * 0.02f, size.height * 0.78f,
-                0f, size.height * 0.62f
+            cubicTo(
+                size.width * 0.72f,
+                size.height * (0.98f + 0.01f * p),
+                size.width * 0.30f,
+                size.height * (0.98f + 0.01f * p),
+                0f,
+                bottomLeftY
             )
 
             close()
         }
+
         return Outline.Generic(path)
     }
 }
