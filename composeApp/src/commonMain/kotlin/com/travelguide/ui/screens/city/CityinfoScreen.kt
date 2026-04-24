@@ -1,7 +1,8 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 
 package com.travelguide.ui.screens.city
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +19,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -45,6 +48,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import kotlinx.coroutines.launch
 import com.travelguide.components.cards.POICard
 import com.travelguide.domain.models.City
 import com.travelguide.domain.models.POIType
@@ -239,29 +244,36 @@ private fun CityHero(
     poiPreviewImages: List<String>,
     onOpenCityMap: () -> Unit
 ) {
-    val heroImages = remember(city.id, poiPreviewImages) {
+    val heroImages = remember(city.id, city.imageUrl, city.imageUrls, poiPreviewImages) {
         buildList {
-            add(cityHeroUrl(city))
+            city.imageUrl?.takeIf { it.isNotBlank() }?.let(::add)
+            addAll(city.imageUrls.filter { it.isNotBlank() })
             addAll(poiPreviewImages.filter { it.isNotBlank() })
+            if (isEmpty()) add(cityHeroUrl(city))
         }.distinct().take(6)
     }
-    var selectedImageIndex by remember(city.id) { mutableStateOf(0) }
-    val selectedImage = heroImages.getOrNull(selectedImageIndex) ?: cityHeroUrl(city)
+    val pagerState = rememberPagerState(pageCount = { heroImages.size })
+    val coroutineScope = rememberCoroutineScope()
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(430.dp)
     ) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(selectedImage)
-                .crossfade(true)
-                .build(),
-            contentDescription = city.name,
-            contentScale = ContentScale.Crop,
+        HorizontalPager(
+            state = pagerState,
             modifier = Modifier.fillMaxSize()
-        )
+        ) { page ->
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(heroImages[page])
+                    .crossfade(true)
+                    .build(),
+                contentDescription = city.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
 
         Box(
             modifier = Modifier
@@ -295,11 +307,18 @@ private fun CityHero(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 18.dp)
         ) {
-            HeroImageSwitcher(
-                images = heroImages,
-                selectedIndex = selectedImageIndex,
-                onImageClick = { selectedImageIndex = it }
-            )
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                HeroImageSwitcher(
+                    images = heroImages,
+                    selectedIndex = pagerState.currentPage,
+                    onImageClick = { index ->
+                        coroutineScope.launch { pagerState.animateScrollToPage(index) }
+                    }
+                )
+            }
 
             Spacer(modifier = Modifier.height(18.dp))
 
@@ -463,6 +482,41 @@ private fun EmptyPois() {
     }
 }
 
+
+@Composable
+private fun CategoryIcon(
+    icon: String,
+    contentDescription: String
+) {
+    if (icon.isImageReference()) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(icon)
+                .crossfade(true)
+                .build(),
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.size(18.dp)
+        )
+    } else {
+        Text(text = icon, fontSize = 16.sp)
+    }
+}
+
+private fun String.isImageReference(): Boolean {
+    val value = trim().lowercase()
+    return value.startsWith("http://") ||
+            value.startsWith("https://") ||
+            value.startsWith("file://") ||
+            value.startsWith("content://") ||
+            value.endsWith(".png") ||
+            value.endsWith(".jpg") ||
+            value.endsWith(".jpeg") ||
+            value.endsWith(".webp") ||
+            value.endsWith(".svg") ||
+            value.contains("/")
+}
+
 @Composable
 private fun CategoryChip(
     category: POIType,
@@ -474,7 +528,7 @@ private fun CategoryChip(
         onClick = onClick,
         label = {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(category.icon)
+                CategoryIcon(icon = category.icon, contentDescription = category.name)
                 Text(text = category.name, style = MaterialTheme.typography.labelLarge)
             }
         },

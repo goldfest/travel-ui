@@ -58,6 +58,8 @@ private fun CityResponseDto.toDomain(): City {
         centerLng = centerLng,
         isPopular = isPopular,
         slug = slug,
-        countryCode = countryCode
+        countryCode = countryCode,
+        imageUrl = imageUrl,
+        imageUrls = imageUrls
     )
 }

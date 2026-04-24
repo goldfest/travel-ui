@@ -54,11 +54,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.travelguide.domain.models.City
 import com.travelguide.theme.TravelAccent
 import com.travelguide.theme.TravelAccentDeep
@@ -491,6 +495,8 @@ private fun CityPhotoPlaceholder(
     modifier: Modifier = Modifier,
     overlay: @Composable BoxScope.() -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val imageUrl = city.primaryImageUrl()
     val colors = remember(city.id) {
         val palettes = listOf(
             listOf(TravelAccentSoft, Color(0xFF4E7667), Color(0xFF172019)),
@@ -509,12 +515,25 @@ private fun CityPhotoPlaceholder(
             .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(30.dp)),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = city.name.take(2).uppercase(),
-            color = Color.White.copy(alpha = 0.72f),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.ExtraBold
-        )
+        if (!imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(imageUrl)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = city.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Text(
+                text = city.name.take(2).uppercase(),
+                color = Color.White.copy(alpha = 0.72f),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.ExtraBold
+            )
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -522,13 +541,18 @@ private fun CityPhotoPlaceholder(
                     Brush.verticalGradient(
                         listOf(
                             Color.Transparent,
-                            Color.Black.copy(alpha = 0.28f)
+                            Color.Black.copy(alpha = if (imageUrl.isNullOrBlank()) 0.28f else 0.40f)
                         )
                     )
                 )
         )
         overlay()
     }
+}
+
+private fun City.primaryImageUrl(): String? {
+    return imageUrls.firstOrNull { it.isNotBlank() }
+        ?: imageUrl?.takeIf { it.isNotBlank() }
 }
 
 @Composable

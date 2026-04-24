@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -80,7 +81,43 @@ fun POICard(
                         modifier = Modifier.fillMaxWidth().height(86.dp)
                     )
                 } else {
-                    Text(text = poi.poiType?.icon ?: "📍", fontSize = 34.sp)
+                    val typeIcon = poi.poiType?.icon
+                    if (!typeIcon.isNullOrBlank() && typeIcon.startsWith("http")) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(typeIcon)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = poi.poiType?.name,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.size(42.dp)
+                        )
+                    } else {
+                        Text(text = typeIcon ?: "📍", fontSize = 34.sp)
+                    }
+                }
+
+                val typeIcon = poi.poiType?.icon
+                if (!typeIcon.isNullOrBlank() && typeIcon.startsWith("http") && !imageUrl.isNullOrBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(6.dp)
+                            .size(28.dp)
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.88f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(typeIcon)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = poi.poiType?.name,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
 

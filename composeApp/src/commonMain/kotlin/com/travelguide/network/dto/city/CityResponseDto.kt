@@ -14,6 +14,8 @@ data class CityResponseDto(
     val isPopular: Boolean = false,
     val slug: String? = null,
     val countryCode: String? = null,
+    val imageUrl: String? = null,
+    val imageUrls: List<String> = emptyList(),
     val createdAt: String? = null,
     val updatedAt: String? = null
 )

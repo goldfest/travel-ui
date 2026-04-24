@@ -3,13 +3,17 @@
 package com.travelguide.ui.screens.poi
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,6 +21,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
@@ -25,14 +33,18 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Report
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -41,15 +53,39 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.travelguide.domain.models.POI
 import com.travelguide.domain.models.PoiWorkingHours
-import com.travelguide.ui.components.RatingBar
+import com.travelguide.theme.TravelAccent
+import com.travelguide.theme.TravelDanger
+import com.travelguide.theme.TravelDark
+import com.travelguide.theme.TravelPanel
+import com.travelguide.theme.TravelPanelSoft
+import com.travelguide.theme.TravelScrim
+import com.travelguide.theme.TravelTextSecondary
+
+private val LightInfoBackground = Color(0xFFF4F1E9)
+private val LightInfoText = Color(0xFF141414)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -71,78 +107,100 @@ fun POIDetailScreen(
     snackbarHost: @Composable (() -> Unit)? = null
 ) {
     Scaffold(
-        snackbarHost = {
-            snackbarHost?.invoke()
-        },
+        containerColor = TravelDark,
+        snackbarHost = { snackbarHost?.invoke() },
         topBar = {
             TopAppBar(
-                title = { Text(poi?.name ?: "Объект") },
+                title = { Text("") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Назад",
+                            tint = Color.White
+                        )
                     }
                 },
                 actions = {
                     if (poi != null) {
                         IconButton(onClick = onAddToFavorite) {
                             Icon(
-                                imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                imageVector = if (isFavorite) {
+                                    Icons.Default.Favorite
+                                } else {
+                                    Icons.Default.FavoriteBorder
+                                },
                                 contentDescription = if (isFavorite) {
                                     "Удалить из избранного"
                                 } else {
                                     "Добавить в избранное"
-                                }
+                                },
+                                tint = if (isFavorite) TravelDanger else Color.White
                             )
                         }
 
                         IconButton(onClick = onReportProblem) {
-                            Icon(Icons.Default.Report, contentDescription = "Сообщить о проблеме")
+                            Icon(
+                                imageVector = Icons.Default.Report,
+                                contentDescription = "Сообщить о проблеме",
+                                tint = Color.White
+                            )
                         }
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = TravelDark,
+                    navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White,
+                    titleContentColor = Color.White
+                )
             )
         },
         bottomBar = {
             if (poi != null && !isLoading && errorMessage == null) {
-                BottomAppBar {
+                BottomAppBar(
+                    containerColor = TravelPanel,
+                    tonalElevation = 0.dp,
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+                ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Button(
                             onClick = onAddToRoute,
                             modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(18.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary
+                                containerColor = TravelAccent,
+                                contentColor = TravelDark
                             )
                         ) {
-                            Icon(Icons.Default.Route, contentDescription = null, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("")
+                            Icon(
+                                imageVector = Icons.Default.Route,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("", maxLines = 1)
                         }
 
                         Button(
                             onClick = onAddToCollection,
                             modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(18.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.secondary
+                                containerColor = TravelPanelSoft,
+                                contentColor = Color.White
                             )
                         ) {
-                            Icon(Icons.Default.BookmarkAdd, contentDescription = null, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("")
-                        }
-
-                        Button(
-                            onClick = onViewReviews,
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.tertiary
+                            Icon(
+                                imageVector = Icons.Default.BookmarkAdd,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
                             )
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("", maxLines = 1)
                         }
                     }
                 }
@@ -157,36 +215,16 @@ fun POIDetailScreen(
                         .padding(paddingValues),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(color = TravelAccent)
                 }
             }
 
             errorMessage != null -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                text = "Ошибка загрузки объекта",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = errorMessage,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            OutlinedButton(onClick = onRetry) {
-                                Text("Повторить")
-                            }
-                        }
-                    }
-                }
+                ErrorState(
+                    modifier = Modifier.padding(paddingValues),
+                    message = errorMessage,
+                    onRetry = onRetry
+                )
             }
 
             poi == null -> {
@@ -196,7 +234,7 @@ fun POIDetailScreen(
                         .padding(paddingValues),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Объект не найден")
+                    Text("Объект не найден", color = Color.White)
                 }
             }
 
@@ -205,175 +243,111 @@ fun POIDetailScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
+                        .background(TravelDark),
+                    contentPadding = PaddingValues(bottom = 104.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp)
                 ) {
                     item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(250.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(MaterialTheme.colorScheme.primaryContainer),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (poi.images.isNotEmpty()) {
-                                    Text(
-                                        text = "🖼️",
-                                        fontSize = 64.sp
-                                    )
-                                } else {
-                                    Text(
-                                        text = poi.poiType?.icon ?: "📍",
-                                        fontSize = 64.sp
-                                    )
-                                }
-                            }
+                        HeroPhotoSection(poi = poi)
+                    }
+
+                    item {
+                        ObjectMainInfoSection(
+                            poi = poi,
+                            averageRating = averageRating,
+                            reviewCount = reviewCount,
+                            onWriteReview = onWriteReview,
+                            onViewReviews = onViewReviews
+                        )
+                    }
+
+                    item {
+                        SectionCard(title = "Описание") {
+                            Text(
+                                text = poi.description?.takeIf { it.isNotBlank() }
+                                    ?: "Описание пока не добавлено.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White.copy(alpha = 0.92f),
+                                lineHeight = 22.sp
+                            )
+                        }
+                    }
+
+                    if (poi.images.isNotEmpty()) {
+                        item {
+                            PhotoGallerySection(
+                                images = poi.images,
+                                title = "Галерея фото"
+                            )
                         }
                     }
 
                     item {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            Text(
-                                text = poi.name,
-                                style = MaterialTheme.typography.headlineMedium
-                            )
+                        LocationSection(poi = poi)
+                    }
 
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (averageRating != null && reviewCount > 0) {
-                                    RatingBar(rating = averageRating.toFloat())
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "${String.format("%.1f", averageRating)} ($reviewCount отзывов)",
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                } else {
-                                    Text("Нет отзывов", style = MaterialTheme.typography.bodyLarge)
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(4.dp))
-
-                            Text(
-                                text = poi.priceLevelText(),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            Surface(
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-                                color = MaterialTheme.colorScheme.secondaryContainer,
-                                modifier = Modifier.padding(vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = poi.poiType?.name ?: "Объект",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            if (!poi.description.isNullOrEmpty()) {
-                                Text(
-                                    text = "Описание",
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = poi.description,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    lineHeight = 24.sp
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                            }
-
-                            if (!poi.address.isNullOrEmpty()) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        Icons.Default.LocationOn,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(20.dp),
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = poi.address,
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(16.dp))
-                            }
-
+                    item {
+                        SectionCard(title = "График работы") {
                             WorkingHoursSection(hours = poi.hours)
+                        }
+                    }
 
-                            if (poi.features.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    text = "Особенности",
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Column(
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
+                    if (poi.features.isNotEmpty()) {
+                        item {
+                            SectionCard(title = "Особенности") {
+                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                     poi.features.forEach { feature ->
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
                                             modifier = Modifier.fillMaxWidth()
                                         ) {
                                             Icon(
-                                                Icons.Default.CheckCircle,
+                                                imageVector = Icons.Default.CheckCircle,
                                                 contentDescription = null,
                                                 modifier = Modifier.size(18.dp),
-                                                tint = MaterialTheme.colorScheme.primary
+                                                tint = TravelAccent
                                             )
-                                            Spacer(modifier = Modifier.width(8.dp))
+
+                                            Spacer(modifier = Modifier.width(10.dp))
+
                                             Text(
                                                 text = "${feature.key}: ${feature.value}",
-                                                style = MaterialTheme.typography.bodyMedium
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = Color.White.copy(alpha = 0.92f)
                                             )
                                         }
                                     }
                                 }
                             }
+                        }
+                    }
 
-                            if (poi.tags.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    text = "Теги",
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
+                    if (poi.tags.isNotEmpty()) {
+                        item {
+                            SectionCard(title = "Теги") {
                                 FlowRow(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     poi.tags.forEach { tag ->
                                         Surface(
-                                            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                                            color = MaterialTheme.colorScheme.secondaryContainer
+                                            shape = RoundedCornerShape(999.dp),
+                                            color = TravelPanelSoft
                                         ) {
                                             Text(
                                                 text = tag,
                                                 style = MaterialTheme.typography.labelMedium,
-                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                                color = Color.White,
+                                                modifier = Modifier.padding(
+                                                    horizontal = 12.dp,
+                                                    vertical = 8.dp
+                                                )
                                             )
                                         }
                                     }
                                 }
                             }
-
-                            Spacer(modifier = Modifier.height(100.dp))
                         }
                     }
                 }
@@ -383,40 +357,547 @@ fun POIDetailScreen(
 }
 
 @Composable
-private fun WorkingHoursSection(hours: List<PoiWorkingHours>) {
-    Spacer(modifier = Modifier.height(8.dp))
-    Text(
-        text = "График работы",
-        style = MaterialTheme.typography.titleMedium
-    )
-    Spacer(modifier = Modifier.height(8.dp))
+private fun HeroPhotoSection(poi: POI) {
+    val images = poi.images.filter { it.isNotBlank() }
+    val listState = rememberLazyListState()
+    val currentPhoto by remember {
+        derivedStateOf { listState.firstVisibleItemIndex.coerceAtMost((images.size - 1).coerceAtLeast(0)) }
+    }
 
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(285.dp)
+    ) {
+        if (images.isNotEmpty()) {
+            LazyRow(
+                state = listState,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(images) { imageUrl ->
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(imageUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = poi.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillParentMaxWidth()
+                            .height(285.dp)
+                    )
+                }
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                Color(0xFF5B6058),
+                                Color(0xFF2B312C),
+                                TravelPanel
+                            )
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = poi.poiType?.icon ?: "📍",
+                    fontSize = 56.sp,
+                    color = Color.White
+                )
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.Transparent,
+                            Color.Transparent,
+                            TravelScrim
+                        )
+                    )
+                )
+        )
+
+        if (images.size > 1) {
+            Surface(
+                shape = RoundedCornerShape(999.dp),
+                color = Color.Black.copy(alpha = 0.48f),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(18.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PhotoLibrary,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+
+                    Text(
+                        text = "${currentPhoto + 1} / ${images.size}",
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ObjectMainInfoSection(
+    poi: POI,
+    averageRating: Double?,
+    reviewCount: Int,
+    onWriteReview: () -> Unit,
+    onViewReviews: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(30.dp))
+                .background(TravelPanel)
+                .padding(horizontal = 18.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = poi.name,
+                style = MaterialTheme.typography.headlineMedium,
+                color = Color.White,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                DarkInfoChip(
+                    icon = Icons.Default.Visibility,
+                    text = poi.poiType?.name ?: "Объект"
+                )
+
+                DarkInfoChip(
+                    icon = Icons.Default.Star,
+                    text = if (averageRating != null && reviewCount > 0) {
+                        "${String.format("%.1f", averageRating)} • $reviewCount отзывов"
+                    } else {
+                        "Нет отзывов"
+                    }
+                )
+
+                DarkInfoChip(
+                    text = poi.priceLevelText()
+                )
+
+                if (poi.latitude != null && poi.longitude != null) {
+                    DarkInfoChip(
+                        icon = Icons.Default.LocationOn,
+                        text = "Есть на карте"
+                    )
+                }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                DarkInfoPointRow(
+                    icon = Icons.Default.Visibility,
+                    title = "Тип объекта",
+                    value = poi.poiType?.name ?: "Не указан"
+                )
+
+                DarkInfoPointRow(
+                    icon = Icons.Default.LocationOn,
+                    title = "Адрес",
+                    value = poi.address?.takeIf { it.isNotBlank() } ?: "Адрес не указан"
+                )
+
+                DarkInfoPointRow(
+                    icon = Icons.Default.Star,
+                    title = "Отзывы",
+                    value = if (averageRating != null && reviewCount > 0) {
+                        "Рейтинг ${String.format("%.1f", averageRating)} на основе $reviewCount отзывов"
+                    } else {
+                        "Пока нет отзывов"
+                    },
+                    onClick = onViewReviews
+                )
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Button(
+                    onClick = onWriteReview,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = TravelAccent,
+                        contentColor = TravelDark
+                    )
+                ) {
+                    Text(
+                        text = "Оставить отзыв",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Button(
+                    onClick = onViewReviews,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = TravelPanelSoft,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text(
+                        text = "Все отзывы",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DarkInfoChip(
+    text: String,
+    icon: ImageVector? = null
+) {
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = TravelPanelSoft
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = TravelAccent,
+                    modifier = Modifier.size(15.dp)
+                )
+            }
+
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.White.copy(alpha = 0.9f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun DarkInfoPointRow(
+    icon: ImageVector,
+    title: String,
+    value: String,
+    onClick: (() -> Unit)? = null
+) {
+    val rowModifier = if (onClick != null) {
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick)
+            .background(Color.White.copy(alpha = 0.035f))
+            .padding(horizontal = 12.dp, vertical = 12.dp)
+    } else {
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color.White.copy(alpha = 0.035f))
+            .padding(horizontal = 12.dp, vertical = 12.dp)
+    }
+
+    Row(
+        modifier = rowModifier,
+        verticalAlignment = Alignment.Top
+    ) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = TravelAccent.copy(alpha = 0.14f)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = TravelAccent,
+                modifier = Modifier
+                    .padding(9.dp)
+                    .size(18.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium,
+                color = TravelTextSecondary
+            )
+
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.9f),
+                lineHeight = 20.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun PhotoGallerySection(
+    images: List<String>,
+    title: String
+) {
+    val visibleImages = images.filter { it.isNotBlank() }
+    if (visibleImages.isEmpty()) return
+
+    SectionCard(title = title) {
+        GalleryMosaic(images = visibleImages)
+    }
+}
+
+@Composable
+private fun GalleryMosaic(images: List<String>) {
+    val context = LocalContext.current
+    val first = images.getOrNull(0)
+    val second = images.getOrNull(1)
+    val third = images.getOrNull(2)
+    val hiddenCount = (images.size - 3).coerceAtLeast(0)
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        if (first != null) {
+            GalleryImage(
+                imageUrl = first,
+                contentDescription = "Фото 1",
+                modifier = Modifier
+                    .weight(1f)
+                    .height(172.dp),
+                context = context
+            )
+        }
+
+        Column(
+            modifier = Modifier.weight(1.42f),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            if (second != null) {
+                GalleryImage(
+                    imageUrl = second,
+                    contentDescription = "Фото 2",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(82.dp),
+                    context = context
+                )
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (third != null) {
+                    GalleryImage(
+                        imageUrl = third,
+                        contentDescription = "Фото 3",
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(80.dp),
+                        context = context
+                    )
+                }
+
+                if (hiddenCount > 0) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(80.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color(0xFF96969C)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "$hiddenCount+",
+                            color = Color.White,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GalleryImage(
+    imageUrl: String,
+    contentDescription: String,
+    modifier: Modifier,
+    context: android.content.Context
+) {
+    AsyncImage(
+        model = ImageRequest.Builder(context)
+            .data(imageUrl)
+            .crossfade(true)
+            .build(),
+        contentDescription = contentDescription,
+        contentScale = ContentScale.Crop,
+        modifier = modifier.clip(RoundedCornerShape(14.dp))
+    )
+}
+
+@Composable
+private fun LocationSection(poi: POI) {
+    SectionCard(title = "Расположение") {
+        poi.address?.takeIf { it.isNotBlank() }?.let {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = null,
+                    tint = TravelAccent,
+                    modifier = Modifier.size(18.dp)
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.92f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+        }
+
+        if (poi.latitude != null && poi.longitude != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp)
+                    .clip(RoundedCornerShape(24.dp))
+            ) {
+                PoiLocationMap(
+                    latitude = poi.latitude,
+                    longitude = poi.longitude,
+                    title = poi.name,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        } else {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(22.dp),
+                color = TravelPanelSoft
+            ) {
+                Text(
+                    text = "Координаты для отображения на карте не указаны.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TravelTextSecondary,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionCard(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(30.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(TravelPanel)
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White,
+                fontWeight = FontWeight.ExtraBold
+            )
+
+            content()
+        }
+    }
+}
+
+@Composable
+private fun WorkingHoursSection(hours: List<PoiWorkingHours>) {
     if (hours.isEmpty()) {
         Text(
             text = "График работы не указан",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = TravelTextSecondary
         )
         return
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         hours
             .sortedWith(compareBy({ normalizeDayOfWeek(it.dayOfWeek) }, { !it.isToday }))
             .forEach { entry ->
                 val isToday = entry.isToday
+
                 Surface(
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(18.dp),
                     color = if (isToday) {
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                        TravelPanelSoft
                     } else {
-                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                        Color.White.copy(alpha = 0.03f)
                     }
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -425,12 +906,15 @@ private fun WorkingHoursSection(hours: List<PoiWorkingHours>) {
                                 imageVector = Icons.Default.Schedule,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = TravelAccent
                             )
+
                             Spacer(modifier = Modifier.width(8.dp))
+
                             Text(
                                 text = dayOfWeekLabel(entry.dayOfWeek),
-                                style = MaterialTheme.typography.bodyMedium
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White
                             )
                         }
 
@@ -438,14 +922,61 @@ private fun WorkingHoursSection(hours: List<PoiWorkingHours>) {
                             text = formatHours(entry),
                             style = MaterialTheme.typography.bodyMedium,
                             color = if (isToday) {
-                                MaterialTheme.colorScheme.onPrimaryContainer
+                                TravelAccent
                             } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
+                                TravelTextSecondary
                             }
                         )
                     }
                 }
             }
+    }
+}
+
+@Composable
+private fun ErrorState(
+    modifier: Modifier,
+    message: String,
+    onRetry: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .then(modifier)
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(28.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(TravelPanel)
+                    .padding(20.dp)
+            ) {
+                Text(
+                    text = "Ошибка загрузки объекта",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TravelDanger
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedButton(onClick = onRetry) {
+                    Text("Повторить")
+                }
+            }
+        }
     }
 }
 
