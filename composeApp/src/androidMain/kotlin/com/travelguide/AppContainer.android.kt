@@ -4,6 +4,7 @@ import android.content.Context
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.SharedPreferencesSettings
 import com.travelguide.auth.AuthRepository
+import com.travelguide.admin.AdminRepository
 import com.travelguide.auth.TokenStorage
 import com.travelguide.city.CityRepository
 import com.travelguide.favorite.FavoriteRepository
@@ -73,6 +74,8 @@ class AppContainer(context: Context) {
 
     private val reportApi = ReportApi(httpClient, reviewBaseUrl)
     val reportRepository = ReportRepository(reportApi)
+
+    val adminRepository = AdminRepository(reviewApi, reportApi, poiApi)
 
     private val favoriteApi = FavoriteApi(httpClient, personalizationBaseUrl)
     val favoriteRepository = FavoriteRepository(favoriteApi, poiRepository)

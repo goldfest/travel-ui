@@ -54,11 +54,20 @@ data class PoiHoursDto(
 @Serializable
 data class PoiMediaDto(
     val id: Long? = null,
+    val poiId: Long? = null,
     val url: String,
     val mediaType: String? = null,
+    val sourceType: String? = null,
     val moderationStatus: String? = null,
+    val displayOrder: Int? = null,
+    val originalFilename: String? = null,
+    val contentType: String? = null,
+    val fileSize: Long? = null,
+    val rejectionReason: String? = null,
     val createdAt: String? = null,
-    val userId: Long? = null
+    val userId: Long? = null,
+    val moderatedBy: Long? = null,
+    val moderatedAt: String? = null
 )
 
 @Serializable

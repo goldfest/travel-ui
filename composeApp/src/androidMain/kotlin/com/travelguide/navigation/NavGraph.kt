@@ -34,7 +34,7 @@ import com.travelguide.route.RouteListRoute
 import com.travelguide.route.RouteMapRoute
 import com.travelguide.route.SelectRouteForPoiRoute
 import com.travelguide.search.SearchRoute
-import com.travelguide.ui.screens.admin.AdminScreen
+import com.travelguide.admin.AdminRoute
 
 @Composable
 fun AppNavHost(
@@ -355,7 +355,8 @@ fun AppNavHost(
                 onBackClick = { navController.popBackStack() },
                 onLogoutNavigate = {
                     navController.navigate("login") {
-                        popUpTo("cityList") { inclusive = true }
+                        popUpTo(0) { inclusive = true }
+                        launchSingleTop = true
                     }
                 },
                 onFavoritesClick = { navController.navigate("favorites") },
@@ -391,14 +392,18 @@ fun AppNavHost(
                 onBackClick = { navController.popBackStack() },
                 onDeleted = {
                     navController.navigate("login") {
-                        popUpTo("cityList") { inclusive = true }
+                        popUpTo(0) { inclusive = true }
+                        launchSingleTop = true
                     }
                 }
             )
         }
 
         composable("admin") {
-            AdminScreen(onBackClick = { navController.popBackStack() })
+            AdminRoute(
+                container = container,
+                onBackClick = { navController.popBackStack() }
+            )
         }
     }
 }

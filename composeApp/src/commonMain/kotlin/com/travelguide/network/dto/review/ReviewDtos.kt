@@ -8,7 +8,8 @@ data class ReviewMediaResponseDto(
     val id: Long,
     @SerialName("imageUrl") val imageUrl: String? = null,
     @SerialName("thumbnailUrl") val thumbnailUrl: String? = null,
-    @SerialName("createdAt") val createdAt: String? = null
+    @SerialName("createdAt") val createdAt: String? = null,
+    val moderationStatus: String? = null
 )
 
 @Serializable
@@ -17,6 +18,10 @@ data class ReviewResponseDto(
     val rating: Int,
     val comment: String? = null,
     @SerialName("isHidden") val isHidden: Boolean = false,
+    val moderationStatus: String? = null,
+    val moderationComment: String? = null,
+    val moderatedByUserId: Long? = null,
+    val moderatedAt: String? = null,
     val likesCount: Int = 0,
     val likedByCurrentUser: Boolean? = null,
     val createdAt: String? = null,

@@ -2,6 +2,10 @@
 
 package com.travelguide.ui.screens.poi
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -33,12 +37,16 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Report
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -59,6 +67,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,6 +84,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.travelguide.domain.models.Feature
 import com.travelguide.domain.models.POI
 import com.travelguide.domain.models.PoiWorkingHours
 import com.travelguide.theme.TravelAccent
@@ -83,6 +94,8 @@ import com.travelguide.theme.TravelPanel
 import com.travelguide.theme.TravelPanelSoft
 import com.travelguide.theme.TravelScrim
 import com.travelguide.theme.TravelTextSecondary
+import com.travelguide.network.upload.UploadFile
+import com.travelguide.ui.util.toUploadFile
 
 private val LightInfoBackground = Color(0xFFF4F1E9)
 private val LightInfoText = Color(0xFF141414)
@@ -104,8 +117,26 @@ fun POIDetailScreen(
     onWriteReview: () -> Unit,
     onViewReviews: () -> Unit,
     onReportProblem: () -> Unit,
+    onUploadPoiPhotos: (List<UploadFile>) -> Unit = {},
+    isPhotoUploading: Boolean = false,
+    photoUploadMessage: String? = null,
+    onPhotoUploadMessageShown: () -> Unit = {},
     snackbarHost: @Composable (() -> Unit)? = null
 ) {
+    val context = LocalContext.current
+    var selectedUploadUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    var showPoiPhotoModerationDialog by remember { mutableStateOf(false) }
+    val poiPhotoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 8)
+    ) { uris ->
+        selectedUploadUris = uris.take(8)
+        val files = uris.take(8).mapNotNull { it.toUploadFile(context) }
+        if (files.isNotEmpty()) {
+            onUploadPoiPhotos(files)
+            showPoiPhotoModerationDialog = true
+        }
+    }
+
     Scaffold(
         containerColor = TravelDark,
         snackbarHost = { snackbarHost?.invoke() },
@@ -281,7 +312,6 @@ fun POIDetailScreen(
                             )
                         }
                     }
-
                     item {
                         LocationSection(poi = poi)
                     }
@@ -294,31 +324,7 @@ fun POIDetailScreen(
 
                     if (poi.features.isNotEmpty()) {
                         item {
-                            SectionCard(title = "Особенности") {
-                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    poi.features.forEach { feature ->
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.CheckCircle,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(18.dp),
-                                                tint = TravelAccent
-                                            )
-
-                                            Spacer(modifier = Modifier.width(10.dp))
-
-                                            Text(
-                                                text = "${feature.key}: ${feature.value}",
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = Color.White.copy(alpha = 0.92f)
-                                            )
-                                        }
-                                    }
-                                }
-                            }
+                            FeaturesSection(features = poi.features)
                         }
                     }
 
@@ -350,9 +356,47 @@ fun POIDetailScreen(
                             }
                         }
                     }
+
+                    item {
+                        UploadPoiPhotoSection(
+                            isUploading = isPhotoUploading,
+                            onPickPhotos = {
+                                poiPhotoPicker.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            }
+                        )
+                    }
                 }
             }
         }
+    }
+
+    if (showPoiPhotoModerationDialog || photoUploadMessage != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showPoiPhotoModerationDialog = false
+                onPhotoUploadMessageShown()
+            },
+            icon = { Icon(Icons.Default.DoneAll, contentDescription = null, tint = TravelAccent) },
+            title = { Text("Фото отправлены") },
+            text = {
+                Text(
+                    text = photoUploadMessage
+                        ?: "Спасибо! Фото объекта будут проверены модератором и появятся в галерее после одобрения."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showPoiPhotoModerationDialog = false
+                        onPhotoUploadMessageShown()
+                    }
+                ) {
+                    Text("Понятно")
+                }
+            }
+        )
     }
 }
 
@@ -782,6 +826,100 @@ private fun GalleryImage(
         contentScale = ContentScale.Crop,
         modifier = modifier.clip(RoundedCornerShape(14.dp))
     )
+}
+
+@Composable
+private fun UploadPoiPhotoSection(
+    isUploading: Boolean,
+    onPickPhotos: () -> Unit
+) {
+    SectionCard(title = "Добавить фото") {
+        Text(
+            text = "Загрузите свои фотографии объекта. Они попадут на модерацию и появятся в галерее после проверки.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = TravelTextSecondary,
+            lineHeight = 20.sp
+        )
+
+        Button(
+            onClick = onPickPhotos,
+            enabled = !isUploading,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = TravelAccent,
+                contentColor = TravelDark
+            )
+        ) {
+            Icon(Icons.Default.AddPhotoAlternate, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(if (isUploading) "Загрузка..." else "Загрузить фото")
+        }
+
+        AssistChip(
+            onClick = {},
+            label = { Text("Публикация только после модерации") },
+            leadingIcon = { Icon(Icons.Default.DoneAll, contentDescription = null) }
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FeaturesSection(features: List<Feature>) {
+    val visibleFeatures = features
+        .filter { it.value.equals("true", ignoreCase = true) || it.value.isNotBlank() }
+        .groupBy { it.key.substringBefore('.', missingDelimiterValue = "Особенности") }
+
+    SectionCard(title = "Особенности") {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            visibleFeatures.forEach { (group, groupFeatures) ->
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = group,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        groupFeatures.forEach { feature ->
+                            Surface(
+                                shape = RoundedCornerShape(999.dp),
+                                color = TravelAccent.copy(alpha = 0.14f)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(15.dp),
+                                        tint = TravelAccent
+                                    )
+                                    Text(
+                                        text = feature.displayName(),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = Color.White.copy(alpha = 0.92f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun Feature.displayName(): String {
+    val title = key.substringAfter('.', key)
+    return if (value.equals("true", ignoreCase = true)) title else "$title: $value"
 }
 
 @Composable

@@ -17,5 +17,7 @@ data class PoiDetailsUiState(
     val isFavorite: Boolean = false,
     val averageRating: Double? = null,
     val reviewCount: Int = 0,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val isPhotoUploading: Boolean = false,
+    val photoUploadMessage: String? = null
 )

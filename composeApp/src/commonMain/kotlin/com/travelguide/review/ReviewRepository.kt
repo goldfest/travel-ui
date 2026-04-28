@@ -4,6 +4,7 @@ import com.travelguide.domain.models.Review
 import com.travelguide.network.dto.review.CreateReviewRequestDto
 import com.travelguide.network.dto.review.UpdateReviewRequestDto
 import com.travelguide.network.review.ReviewApi
+import com.travelguide.network.upload.UploadFile
 
 class ReviewRepository(
     private val api: ReviewApi
@@ -24,16 +25,26 @@ class ReviewRepository(
         poiId: Int,
         rating: Int,
         comment: String,
-        imageUrls: List<String> = emptyList()
+        imageUrls: List<String> = emptyList(),
+        files: List<UploadFile> = emptyList()
     ): Review {
-        return api.createReview(
-            CreateReviewRequestDto(
+        return if (files.isNotEmpty()) {
+            api.createReviewWithMedia(
                 poiId = poiId.toLong(),
                 rating = rating,
                 comment = comment,
-                imageUrls = imageUrls
-            )
-        ).toDomain()
+                files = files
+            ).toDomain()
+        } else {
+            api.createReview(
+                CreateReviewRequestDto(
+                    poiId = poiId.toLong(),
+                    rating = rating,
+                    comment = comment,
+                    imageUrls = imageUrls
+                )
+            ).toDomain()
+        }
     }
 
     suspend fun updateReview(

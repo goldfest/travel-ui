@@ -1,21 +1,62 @@
 package com.travelguide.ui.screens.review
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Report
+import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.Button
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import coil.compose.AsyncImage
 import com.travelguide.domain.models.Review
 import com.travelguide.ui.components.RatingBar
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,6 +76,7 @@ fun ReviewsScreen(
     val filteredReviews = when (selectedFilter) {
         "positive" -> reviews.filter { it.rating >= 4 }
         "negative" -> reviews.filter { it.rating <= 2 }
+        "photo" -> reviews.filter { it.images.isNotEmpty() }
         else -> reviews
     }
 
@@ -87,9 +129,10 @@ fun ReviewsScreen(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .padding(16.dp),
+                        shape = RoundedCornerShape(28.dp)
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
+                        Column(modifier = Modifier.padding(18.dp)) {
                             Text(
                                 text = String.format("%.1f", averageRating),
                                 style = MaterialTheme.typography.displaySmall,
@@ -104,27 +147,39 @@ fun ReviewsScreen(
                         }
                     }
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        FilterChip(
-                            selected = selectedFilter == "all",
-                            onClick = { selectedFilter = "all" },
-                            label = { Text("Все") }
-                        )
-                        FilterChip(
-                            selected = selectedFilter == "positive",
-                            onClick = { selectedFilter = "positive" },
-                            label = { Text("Положительные") }
-                        )
-                        FilterChip(
-                            selected = selectedFilter == "negative",
-                            onClick = { selectedFilter = "negative" },
-                            label = { Text("Критические") }
-                        )
+                        item {
+                            FilterChip(
+                                selected = selectedFilter == "all",
+                                onClick = { selectedFilter = "all" },
+                                label = { Text("Все") }
+                            )
+                        }
+                        item {
+                            FilterChip(
+                                selected = selectedFilter == "positive",
+                                onClick = { selectedFilter = "positive" },
+                                label = { Text("Положительные") }
+                            )
+                        }
+                        item {
+                            FilterChip(
+                                selected = selectedFilter == "negative",
+                                onClick = { selectedFilter = "negative" },
+                                label = { Text("Критические") }
+                            )
+                        }
+                        item {
+                            FilterChip(
+                                selected = selectedFilter == "photo",
+                                onClick = { selectedFilter = "photo" },
+                                label = { Text("С фото") }
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -134,9 +189,7 @@ fun ReviewsScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("Отзывов пока нет")
                                 Spacer(modifier = Modifier.height(12.dp))
                                 Button(onClick = onWriteReview) {
@@ -171,7 +224,12 @@ fun ReviewCard(
     onLike: () -> Unit,
     onReport: () -> Unit
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    var openedImage by remember { mutableStateOf<String?>(null) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(26.dp)
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -215,11 +273,26 @@ fun ReviewCard(
                 Text(text = review.comment)
             }
 
+            if (review.images.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(review.images) { imageUrl ->
+                        AsyncImage(
+                            model = imageUrl,
+                            contentDescription = "Фото из отзыва",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(92.dp)
+                                .clip(RoundedCornerShape(18.dp))
+                                .clickable { openedImage = imageUrl }
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onLike) {
                     Icon(Icons.Default.ThumbUp, contentDescription = "Лайк")
                 }
@@ -229,6 +302,36 @@ fun ReviewCard(
 
                 IconButton(onClick = onReport) {
                     Icon(Icons.Default.Report, contentDescription = "Пожаловаться")
+                }
+            }
+        }
+    }
+
+    openedImage?.let { imageUrl ->
+        Dialog(onDismissRequest = { openedImage = null }) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(Color.Black)
+            ) {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = "Фото отзыва",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(520.dp)
+                )
+
+                IconButton(
+                    onClick = { openedImage = null },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .background(Color.Black.copy(alpha = 0.55f), CircleShape)
+                ) {
+                    Icon(Icons.Default.Close, contentDescription = "Закрыть", tint = Color.White)
                 }
             }
         }

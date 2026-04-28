@@ -3,6 +3,7 @@ package com.travelguide.poi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.travelguide.domain.models.PoiCardUiModel
+import com.travelguide.network.upload.UploadFile
 import com.travelguide.favorite.FavoriteRepository
 import com.travelguide.review.ReviewRepository
 import kotlinx.coroutines.async
@@ -126,6 +127,37 @@ class PoiViewModel(
                 )
             }
         }
+    }
+
+    fun uploadPoiPhotos(files: List<UploadFile>) {
+        val poi = _detailsState.value.poi ?: return
+        if (files.isEmpty()) return
+
+        viewModelScope.launch {
+            _detailsState.value = _detailsState.value.copy(
+                isPhotoUploading = true,
+                photoUploadMessage = null,
+                errorMessage = null
+            )
+
+            runCatching {
+                repository.uploadPoiPhotos(poi.id, files)
+            }.onSuccess {
+                _detailsState.value = _detailsState.value.copy(
+                    isPhotoUploading = false,
+                    photoUploadMessage = "Фото отправлены на модерацию. После одобрения они появятся в галерее объекта."
+                )
+            }.onFailure { e ->
+                _detailsState.value = _detailsState.value.copy(
+                    isPhotoUploading = false,
+                    errorMessage = e.toUserMessage("Не удалось загрузить фото")
+                )
+            }
+        }
+    }
+
+    fun clearPhotoUploadMessage() {
+        _detailsState.value = _detailsState.value.copy(photoUploadMessage = null)
     }
 
     fun toggleFavorite() {

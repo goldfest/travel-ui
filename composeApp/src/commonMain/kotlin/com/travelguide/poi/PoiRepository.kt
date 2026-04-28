@@ -4,10 +4,12 @@ import com.travelguide.domain.models.Feature
 import com.travelguide.domain.models.POI
 import com.travelguide.domain.models.POIType
 import com.travelguide.domain.models.PoiWorkingHours
+import com.travelguide.core.MediaUrlResolver
 import com.travelguide.network.dto.poi.PoiResponseDto
 import com.travelguide.network.dto.poi.PoiSearchRequestDto
 import com.travelguide.network.dto.poi.PoiTypeResponseDto
 import com.travelguide.network.poi.PoiApi
+import com.travelguide.network.upload.UploadFile
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
@@ -72,6 +74,11 @@ class PoiRepository(
     suspend fun getPoiTypes(): List<POIType> {
         return api.getAllPoiTypes().map { it.toDomain() }
     }
+
+    suspend fun uploadPoiPhotos(poiId: Int, files: List<UploadFile>) {
+        if (files.isEmpty()) return
+        api.uploadUserPhotos(poiId.toLong(), files)
+    }
 }
 
 private fun PoiResponseDto.toDomain(): POI {
@@ -80,7 +87,7 @@ private fun PoiResponseDto.toDomain(): POI {
             id = it.id.toInt(),
             code = it.code,
             name = it.name,
-            icon = it.icon ?: "📍"
+            icon = MediaUrlResolver.resolve(it.icon) ?: it.icon ?: "📍"
         )
     }
 
@@ -96,7 +103,7 @@ private fun PoiResponseDto.toDomain(): POI {
         poiTypeId = poiType?.id?.toInt() ?: 0,
         poiType = mappedType,
         tags = tags.toTagList(),
-        images = media?.mapNotNull { it.url.takeIf(String::isNotBlank) } ?: emptyList(),
+        images = media?.mapNotNull { MediaUrlResolver.resolve(it.url) } ?: emptyList(),
         features = features
             ?.map { Feature(key = it.key, value = it.value) }
             ?: emptyList(),
@@ -119,7 +126,7 @@ private fun PoiTypeResponseDto.toDomain(): POIType {
         id = id.toInt(),
         code = code,
         name = name,
-        icon = icon ?: "📍"
+        icon = MediaUrlResolver.resolve(icon) ?: icon ?: "📍"
     )
 }
 

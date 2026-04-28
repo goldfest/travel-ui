@@ -1,32 +1,67 @@
-// screens/admin/AdminScreen.kt
 package com.travelguide.ui.screens.admin
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.RateReview
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.background
-import com.travelguide.domain.models.User
+import coil.compose.AsyncImage
+import com.travelguide.admin.AdminUiState
+import com.travelguide.core.MediaUrlResolver
+import com.travelguide.network.dto.poi.PoiMediaDto
+import com.travelguide.network.dto.review.ReportResponseDto
+import com.travelguide.network.dto.review.ReviewResponseDto
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminScreen(
-    onBackClick: () -> Unit
+    state: AdminUiState,
+    onBackClick: () -> Unit,
+    onRefresh: () -> Unit,
+    onApproveReview: (Long) -> Unit,
+    onRejectReview: (Long) -> Unit,
+    onResolveReport: (Long) -> Unit,
+    onRejectReport: (Long) -> Unit,
+    onApprovePoiPhoto: (Long, Long) -> Unit,
+    onRejectPoiPhoto: (Long, Long) -> Unit,
+    onMessageShown: () -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("Обзор", "Пользователи", "Модерация", "Статистика")
+    val tabs = listOf("Обзор", "Отзывы", "Жалобы", "Фото")
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(state.message, state.error) {
+        val text = state.message ?: state.error
+        if (!text.isNullOrBlank()) {
+            snackbarHostState.showSnackbar(text)
+            onMessageShown()
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Админ-панель") },
@@ -36,693 +71,231 @@ fun AdminScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* TODO: обновить */ }) {
+                    IconButton(onClick = onRefresh, enabled = !state.isLoading && !state.isActionLoading) {
                         Icon(Icons.Default.Refresh, contentDescription = "Обновить")
                     }
                 }
             )
-        },
-        bottomBar = {
-            BottomAppBar {
-                TabRow(
-                    selectedTabIndex = selectedTab,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    tabs.forEachIndexed { index, title ->
-                        Tab(
-                            selected = selectedTab == index,
-                            onClick = { selectedTab = index },
-                            text = { Text(title) }
-                        )
-                    }
-                }
-            }
         }
-    ) { paddingValues ->
-        Box(
+    ) { padding ->
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(padding)
         ) {
-            when (selectedTab) {
-                0 -> AdminOverview()
-                1 -> AdminUsers()
-                2 -> AdminModeration()
-                3 -> AdminStatistics()
+            if (state.isLoading) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            } else if (state.isActionLoading) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
-        }
-    }
-}
 
-@Composable
-fun AdminOverview() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Статистика
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            StatCard(
-                title = "Пользователи",
-                value = "1,234",
-                icon = Icons.Default.People,
-                color = MaterialTheme.colorScheme.primary
-            )
-            StatCard(
-                title = "Объекты",
-                value = "5,678",
-                icon = Icons.Default.Place,
-                color = MaterialTheme.colorScheme.secondary
-            )
-        }
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            StatCard(
-                title = "Отзывы",
-                value = "12,345",
-                icon = Icons.Default.Comment,
-                color = MaterialTheme.colorScheme.tertiary
-            )
-            StatCard(
-                title = "Маршруты",
-                value = "890",
-                icon = Icons.Default.Route,
-                color = MaterialTheme.colorScheme.error
-            )
-        }
-
-        // Быстрые действия
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Быстрые действия",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    AdminActionItem(
-                        title = "Добавить город",
-                        description = "Добавьте новый город в систему",
-                        icon = Icons.Default.AddLocation,
-                        onClick = { /* TODO */ }
-                    )
-                    AdminActionItem(
-                        title = "Модерация отзывов",
-                        description = "Проверьте новые отзывы",
-                        icon = Icons.Default.Comment,
-                        onClick = { /* TODO */ }
-                    )
-                    AdminActionItem(
-                        title = "Импорт данных",
-                        description = "Импорт POI из внешних источников",
-                        icon = Icons.Default.Download,
-                        onClick = { /* TODO */ }
-                    )
-                    AdminActionItem(
-                        title = "Управление пользователями",
-                        description = "Блокировка/разблокировка",
-                        icon = Icons.Default.AdminPanelSettings,
-                        onClick = { /* TODO */ }
+            ScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = 12.dp) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTab == index,
+                        onClick = { selectedTab = index },
+                        text = { Text(title) }
                     )
                 }
             }
-        }
 
-        // Последние активности
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Последние активности",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.height(200.dp)
-                ) {
-                    items(listOf(
-                        "Новый пользователь зарегистрировался",
-                        "Добавлен объект 'Музей космонавтики'",
-                        "Оставлен отзыв на 'Кремль'",
-                        "Создан маршрут 'Вечерняя Москва'",
-                        "Жалоба на отзыв рассмотрена"
-                    )) { activity ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        Icons.Default.Circle,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(8.dp),
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                text = activity,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
+            when {
+                state.isLoading && state.pendingReviews.isEmpty() && state.pendingReports.isEmpty() && state.pendingPoiPhotos.isEmpty() -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
                     }
                 }
+                selectedTab == 0 -> AdminOverview(state = state)
+                selectedTab == 1 -> PendingReviewsList(state.pendingReviews, onApproveReview, onRejectReview)
+                selectedTab == 2 -> PendingReportsList(state.pendingReports, onResolveReport, onRejectReport)
+                selectedTab == 3 -> PendingPoiPhotosList(state.pendingPoiPhotos, onApprovePoiPhoto, onRejectPoiPhoto)
             }
         }
     }
 }
 
 @Composable
-fun StatCard(
-    title: String,
-    value: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    color: Color
-) {
-    Card(
-
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                modifier = Modifier.size(32.dp),
-                tint = color
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = value,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-fun AdminActionItem(
-    title: String,
-    description: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    onClick: () -> Unit
-) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                modifier = Modifier.size(32.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Icon(
-                Icons.Default.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-fun AdminUsers() {
-    val users = listOf(
-        User(
-            id = 1,
-            email = "admin@example.com",
-            username = "Администратор",
-            role = "ADMIN"
-        ),
-        User(
-            id = 2,
-            email = "moderator@example.com",
-            username = "Модератор",
-            role = "MODERATOR"
-        ),
-        User(
-            id = 3,
-            email = "user@example.com",
-            username = "Обычный пользователь",
-            role = "USER"
-        ),
-        User(
-            id = 4,
-            email = "blocked@example.com",
-            username = "Заблокированный",
-            role = "USER",
-            isBlocked = true
-        )
-    )
-
+private fun AdminOverview(state: AdminUiState) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "Пользователи (${users.size})",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Button(
-                    onClick = { /* TODO: добавить пользователя */ },
-                    modifier = Modifier.height(40.dp)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Добавить")
-                }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                AdminStatCard("Отзывы", state.dashboard.pendingReviews.toString(), Icons.Default.RateReview, Modifier.weight(1f))
+                AdminStatCard("Жалобы", state.dashboard.pendingReports.toString(), Icons.Default.Flag, Modifier.weight(1f))
             }
         }
-
-        items(users) { user ->
-            UserCard(user = user)
-        }
-    }
-}
-
-@Composable
-fun UserCard(user: User) {
-    Card(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Аватар
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                text = user.username.first().toString(),
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column {
-                        Text(
-                            text = user.username,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            text = user.email,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                // Роль и статус
-                Column(horizontalAlignment = Alignment.End) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = when(user.role) {
-                            "ADMIN" -> MaterialTheme.colorScheme.errorContainer
-                            "MODERATOR" -> MaterialTheme.colorScheme.tertiaryContainer
-                            else -> MaterialTheme.colorScheme.secondaryContainer
-                        }
-                    ) {
-                        Text(
-                            text = user.role,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = when(user.role) {
-                                "ADMIN" -> MaterialTheme.colorScheme.onErrorContainer
-                                "MODERATOR" -> MaterialTheme.colorScheme.onTertiaryContainer
-                                else -> MaterialTheme.colorScheme.onSecondaryContainer
-                            },
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-
-                    if (user.isBlocked) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
-                        ) {
-                            Text(
-                                text = "Заблокирован",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Действия
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (user.isBlocked) {
-                    Button(
-                        onClick = { /* TODO: разблокировать */ },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Разблокировать")
-                    }
-                } else {
-                    Button(
-                        onClick = { /* TODO: заблокировать */ },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer
-                        ),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Заблокировать")
-                    }
-                }
-
-                if (user.role != "ADMIN") {
-                    Button(
-                        onClick = { /* TODO: изменить роль */ },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Роль")
-                    }
-                }
-
-                IconButton(onClick = { /* TODO: подробнее */ }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "Действия")
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun AdminModeration() {
-    var selectedCategory by remember { mutableStateOf("reports") } // reports, reviews, poi
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Категории модерации
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            listOf(
-                "reports" to "Жалобы",
-                "reviews" to "Отзывы",
-                "poi" to "Объекты"
-            ).forEach { (category, title) ->
-                FilterChip(
-                    selected = selectedCategory == category,
-                    onClick = { selectedCategory = category },
-                    label = { Text(title) },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
-
-        when (selectedCategory) {
-            "reports" -> ModerationReports()
-            "reviews" -> ModerationReviews()
-            "poi" -> ModerationPOI()
-        }
-    }
-}
-
-@Composable
-fun ModerationReports() {
-    val reports = listOf(
-        com.travelguide.domain.models.Report(
-            id = 1,
-            reportType = "incorrect_info",
-            comment = "Неверный адрес, объект находится на другой улице",
-            status = "pending",
-            userId = 1,
-            poiId = 1
-        ),
-        com.travelguide.domain.models.Report(
-            id = 2,
-            reportType = "offensive_content",
-            comment = "Оскорбительный отзыв",
-            status = "pending",
-            userId = 2,
-            reviewId = 1
-        )
-    )
-
-    LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.fillMaxSize()
-    ) {
         item {
-            Text(
-                text = "Ожидают рассмотрения (${reports.size})",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                AdminStatCard("Фото POI", state.dashboard.pendingPoiPhotos.toString(), Icons.Default.Image, Modifier.weight(1f))
+                AdminStatCard("Всего", (state.dashboard.pendingReviews + state.dashboard.pendingReports + state.dashboard.pendingPoiPhotos).toString(), Icons.Default.Warning, Modifier.weight(1f))
+            }
+        }
+        item {
+            Card(shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Очередь модерации", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text("Здесь отображаются отзывы с фотографиями, жалобы пользователей и новые фото объектов, которые ожидают проверки администратора.")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AdminStatCard(title: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier) {
+    Card(modifier = modifier, shape = RoundedCornerShape(20.dp)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(icon, contentDescription = null)
+            Text(value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
+            Text(title, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun PendingReviewsList(
+    reviews: List<ReviewResponseDto>,
+    onApprove: (Long) -> Unit,
+    onReject: (Long) -> Unit
+) {
+    ModerationListEmptyAware(itemsCount = reviews.size, emptyText = "Отзывов на модерации нет") {
+        items(reviews, key = { it.id }) { review ->
+            ModerationCard(
+                title = "Отзыв #${review.id} • ${review.rating}★",
+                subtitle = "POI #${review.poiId} • пользователь #${review.userId}",
+                body = review.comment ?: "Комментарий не указан",
+                images = review.media.mapNotNull { MediaUrlResolver.resolve(it.imageUrl ?: it.thumbnailUrl) },
+                onApprove = { onApprove(review.id) },
+                onReject = { onReject(review.id) }
             )
         }
-
-        items(reports) { report ->
-            ReportModerationCard(report = report)
-        }
     }
 }
 
 @Composable
-fun ReportModerationCard(report: com.travelguide.domain.models.Report) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = when(report.status) {
-                "pending" -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
-                "approved" -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
-                "rejected" -> MaterialTheme.colorScheme.surfaceVariant
-                else -> MaterialTheme.colorScheme.surface
+private fun PendingReportsList(
+    reports: List<ReportResponseDto>,
+    onResolve: (Long) -> Unit,
+    onReject: (Long) -> Unit
+) {
+    ModerationListEmptyAware(itemsCount = reports.size, emptyText = "Жалоб на модерации нет") {
+        items(reports, key = { it.id }) { report ->
+            val target = when {
+                report.reviewId != null -> "отзыв #${report.reviewId}"
+                report.poiId != null -> "объект #${report.poiId}"
+                else -> "цель не указана"
             }
-        )
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = report.reportTypeText(),
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
-                )
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = when(report.status) {
-                        "pending" -> MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
-                        "approved" -> MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                        else -> MaterialTheme.colorScheme.surfaceVariant
-                    }
-                ) {
-                    Text(
-                        text = report.statusText(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = when(report.status) {
-                            "pending" -> MaterialTheme.colorScheme.error
-                            "approved" -> MaterialTheme.colorScheme.primary
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = report.comment,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            ModerationCard(
+                title = "Жалоба #${report.id} • ${report.reportType}",
+                subtitle = target,
+                body = report.comment ?: "Описание не указано",
+                images = buildList {
+                    MediaUrlResolver.resolve(report.photoUrl)?.let(::add)
+                    addAll(report.media.mapNotNull { MediaUrlResolver.resolve(it.imageUrl ?: it.thumbnailUrl) })
+                },
+                approveText = "Обработать",
+                rejectText = "Отклонить",
+                onApprove = { onResolve(report.id) },
+                onReject = { onReject(report.id) }
             )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Действия
-            if (report.status == "pending") {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = { /* TODO: одобрить */ },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Одобрить")
-                    }
-                    Button(
-                        onClick = { /* TODO: отклонить */ },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer
-                        ),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Отклонить")
-                    }
-                }
-            } else {
-                Text(
-                    text = "Обработано",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
         }
     }
 }
 
 @Composable
-fun ModerationReviews() {
-    // TODO: Реализация модерации отзывов
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text("Модерация отзывов")
+private fun PendingPoiPhotosList(
+    photos: List<PoiMediaDto>,
+    onApprove: (Long, Long) -> Unit,
+    onReject: (Long, Long) -> Unit
+) {
+    ModerationListEmptyAware(itemsCount = photos.size, emptyText = "Фотографий объектов на модерации нет") {
+        items(photos, key = { it.id ?: it.url }) { photo ->
+            val poiId = photo.poiId
+            val mediaId = photo.id
+            ModerationCard(
+                title = "Фото объекта #${poiId ?: "?"}",
+                subtitle = "Загрузил пользователь #${photo.userId ?: "?"}",
+                body = photo.originalFilename ?: "Новое фото ожидает проверки",
+                images = listOfNotNull(MediaUrlResolver.resolve(photo.url)),
+                onApprove = {
+                    if (poiId != null && mediaId != null) onApprove(poiId, mediaId)
+                },
+                onReject = {
+                    if (poiId != null && mediaId != null) onReject(poiId, mediaId)
+                }
+            )
+        }
     }
 }
 
 @Composable
-fun ModerationPOI() {
-    // TODO: Реализация модерации объектов
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text("Модерация объектов")
-    }
-}
-
-@Composable
-fun AdminStatistics() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text(
-            text = "Статистика",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
+private fun ModerationListEmptyAware(
+    itemsCount: Int,
+    emptyText: String,
+    content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit
+) {
+    if (itemsCount == 0) {
+        Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+            Text(emptyText, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            content = content
         )
+    }
+}
 
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Активность пользователей",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
-                // TODO: Графики статистики
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .background(
-                            MaterialTheme.colorScheme.surfaceVariant,
-                            shape = RoundedCornerShape(8.dp)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("График активности")
+@Composable
+private fun ModerationCard(
+    title: String,
+    subtitle: String,
+    body: String,
+    images: List<String>,
+    approveText: String = "Одобрить",
+    rejectText: String = "Отклонить",
+    onApprove: () -> Unit,
+    onReject: () -> Unit
+) {
+    Card(shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+
+            Text(body, maxLines = 5, overflow = TextOverflow.Ellipsis)
+
+            if (images.isNotEmpty()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    images.take(3).forEach { url ->
+                        AsyncImage(
+                            model = url,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(104.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                        )
+                    }
                 }
             }
-        }
 
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Популярные объекты",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(
-                        "Кремль" to "1,234 просмотров",
-                        "Красная площадь" to "987 просмотров",
-                        "Третьяковская галерея" to "765 просмотров",
-                        "ВДНХ" to "654 просмотров",
-                        "Арбат" to "543 просмотров"
-                    ).forEach { (name, views) ->
-                        Row(
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(name, style = MaterialTheme.typography.bodyMedium)
-                            Text(views, style = MaterialTheme.typography.bodyMedium)
-                        }
-                    }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = onReject, modifier = Modifier.weight(1f)) {
+                    Text(rejectText)
+                }
+                Button(onClick = onApprove, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(approveText)
                 }
             }
         }

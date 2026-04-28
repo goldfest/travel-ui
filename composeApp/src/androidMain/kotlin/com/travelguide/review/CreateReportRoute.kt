@@ -36,6 +36,9 @@ fun CreateReportRoute(
         onBackClick = onBackClick,
         onSubmit = { type, comment ->
             vm.submitPoiReport(poiId, type, comment)
+        },
+        onSubmitWithPhotos = { type, comment, files ->
+            vm.submitPoiReport(poiId, type, comment, files)
         }
     )
 }

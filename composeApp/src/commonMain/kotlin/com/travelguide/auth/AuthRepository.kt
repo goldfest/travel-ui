@@ -10,7 +10,11 @@ class AuthRepository(
     private val userCache: UserCache? = null
 ) {
     suspend fun login(email: String, password: String): User? {
+        storage.clear()
+        userCache?.clear()
+
         val resp = api.login(email, password)
+
         storage.accessToken = resp.accessToken
         storage.refreshToken = resp.refreshToken
 
@@ -30,7 +34,11 @@ class AuthRepository(
     }
 
     suspend fun register(email: String, username: String, password: String, phone: String?): User? {
+        storage.clear()
+        userCache?.clear()
+
         val resp = api.register(email, username, password, phone)
+
         storage.accessToken = resp.accessToken
         storage.refreshToken = resp.refreshToken
 
