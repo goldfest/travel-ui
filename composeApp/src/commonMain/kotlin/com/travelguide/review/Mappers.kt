@@ -1,5 +1,6 @@
 package com.travelguide.review
 
+import com.travelguide.core.MediaUrlResolver
 import com.travelguide.domain.models.Report
 import com.travelguide.domain.models.Review
 import com.travelguide.domain.models.User
@@ -20,9 +21,11 @@ fun ReviewResponseDto.toDomain(): Review {
             id = userId,
             email = "",
             username = userName ?: "Пользователь",
-            avatarUrl = userAvatar
+            avatarUrl = MediaUrlResolver.resolve(userAvatar) ?: userAvatar
         ),
-        images = media.mapNotNull { it.imageUrl }
+        images = media.mapNotNull { mediaItem ->
+            MediaUrlResolver.resolve(mediaItem.imageUrl ?: mediaItem.thumbnailUrl)
+        }
     )
 }
 
@@ -32,7 +35,7 @@ fun ReportResponseDto.toDomain(): Report {
         reportType = reportType,
         comment = comment ?: "",
         status = status,
-        photoUrl = photoUrl,
+        photoUrl = MediaUrlResolver.resolve(photoUrl) ?: photoUrl,
         createdAt = createdAt ?: "",
         userId = userId.toInt(),
         reviewId = reviewId?.toInt(),

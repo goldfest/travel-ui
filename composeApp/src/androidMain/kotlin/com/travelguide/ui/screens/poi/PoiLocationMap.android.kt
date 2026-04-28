@@ -9,11 +9,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import com.travelguide.ui.map.TravelMapMarkers
+import com.travelguide.ui.map.TravelMapTileSources
 import com.travelguide.ui.screens.route.applyMapTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
@@ -61,7 +62,7 @@ private fun createPoiMapView(context: Context): MapView {
     )
 
     return MapView(context).apply {
-        setTileSource(TileSourceFactory.MAPNIK)
+        setTileSource(TravelMapTileSources.CartoPositron)
         setMultiTouchControls(true)
         controller.setZoom(15.0)
         minZoomLevel = 4.0
@@ -82,13 +83,18 @@ private suspend fun updatePoiMap(
         applyMapTheme(mapView, darkTheme)
 
         val point = GeoPoint(latitude, longitude)
+
         val marker = Marker(mapView).apply {
             position = point
             this.title = title
+            icon = TravelMapMarkers.singlePoiMarker(
+                context = mapView.context
+            )
             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
         }
 
         mapView.overlays.add(marker)
+
         mapView.post {
             mapView.controller.setZoom(15.0)
             mapView.controller.setCenter(point)

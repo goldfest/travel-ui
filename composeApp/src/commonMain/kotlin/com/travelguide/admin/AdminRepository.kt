@@ -10,19 +10,38 @@ class AdminRepository(
     private val poiApi: PoiApi
 ) {
     suspend fun loadModerationQueue(): AdminUiState {
-        val reviews = reviewApi.getPendingReviews(size = 50)
-        val reports = reportApi.getReportsByStatus(status = "pending", size = 50)
-        val photos = poiApi.getPendingMedia(size = 50)
+        val reviewsResult = runCatching {
+            reviewApi.getPendingReviews(size = 50)
+        }
+
+        val reportsResult = runCatching {
+            reportApi.getReportsByStatus(status = "pending", size = 50)
+        }
+
+        val photosResult = runCatching {
+            poiApi.getPendingMedia(size = 50)
+        }
+
+        val reviews = reviewsResult.getOrNull()
+        val reports = reportsResult.getOrNull()
+        val photos = photosResult.getOrNull()
+
+        val errors = buildList {
+            reviewsResult.exceptionOrNull()?.let { add("Отзывы: ${it.message}") }
+            reportsResult.exceptionOrNull()?.let { add("Жалобы: ${it.message}") }
+            photosResult.exceptionOrNull()?.let { add("Фото: ${it.message}") }
+        }
 
         return AdminUiState(
             dashboard = AdminDashboard(
-                pendingReviews = reviews.totalElements.toInt(),
-                pendingReports = reports.totalElements.toInt(),
-                pendingPoiPhotos = photos.totalElements.toInt()
+                pendingReviews = reviews?.totalElements?.toInt() ?: 0,
+                pendingReports = reports?.totalElements?.toInt() ?: 0,
+                pendingPoiPhotos = photos?.totalElements?.toInt() ?: 0
             ),
-            pendingReviews = reviews.content,
-            pendingReports = reports.content,
-            pendingPoiPhotos = photos.content
+            pendingReviews = reviews?.content ?: emptyList(),
+            pendingReports = reports?.content ?: emptyList(),
+            pendingPoiPhotos = photos?.content ?: emptyList(),
+            error = errors.takeIf { it.isNotEmpty() }?.joinToString("\n")
         )
     }
 

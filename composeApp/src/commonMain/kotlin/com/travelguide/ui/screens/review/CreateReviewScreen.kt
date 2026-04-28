@@ -59,6 +59,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.travelguide.network.upload.UploadFile
+import com.travelguide.ui.components.FullScreenPhotoViewer
 import com.travelguide.ui.util.toUploadFile
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -66,9 +67,11 @@ import com.travelguide.ui.util.toUploadFile
 fun CreateReviewScreen(
     poiId: Int,
     isLoading: Boolean,
+    success: Boolean,
     error: String?,
     onBackClick: () -> Unit,
     onSubmit: (rating: Int, comment: String) -> Unit,
+    onSubmitted: () -> Unit,
     onSubmitWithPhotos: (rating: Int, comment: String, files: List<UploadFile>) -> Unit = { ratingValue, commentValue, _ ->
         onSubmit(ratingValue, commentValue)
     }
@@ -78,6 +81,7 @@ fun CreateReviewScreen(
     var comment by remember { mutableStateOf("") }
     var selectedPhotoUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var showModerationDialog by remember { mutableStateOf(false) }
+    var openedPhotoIndex by remember { mutableStateOf<Int?>(null) }
 
     val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 5)
@@ -85,17 +89,15 @@ fun CreateReviewScreen(
         selectedPhotoUris = uris.take(5)
     }
 
-    LaunchedEffect(isLoading, error) {
-        if (!isLoading && error == null && rating > 0 && comment.isNotBlank()) {
-            // Диалог показывается после успешного перехода состояния из загрузки в success
-            // за навигацию назад отвечает внешний обработчик, если он уже настроен.
+    LaunchedEffect(success) {
+        if (success) {
+            showModerationDialog = true
         }
     }
 
     fun submitReview() {
         val files = selectedPhotoUris.mapNotNull { it.toUploadFile(context) }
         onSubmitWithPhotos(rating, comment.trim(), files)
-        showModerationDialog = true
     }
 
     Scaffold(
@@ -171,23 +173,21 @@ fun CreateReviewScreen(
                     modifier = Modifier.padding(18.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Row(
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Column {
-                            Text(
-                                text = "Фото к отзыву",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "До 5 фото. После отправки отзыв уйдет на модерацию.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        Text(
+                            text = "Фото к отзыву",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Text(
+                            text = "До 5 фото. После отправки отзыв уйдет на модерацию.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
 
                         OutlinedButton(
                             onClick = {
@@ -195,11 +195,13 @@ fun CreateReviewScreen(
                                     PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                                 )
                             },
-                            enabled = !isLoading
+                            enabled = !isLoading,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(18.dp)
                         ) {
                             Icon(Icons.Default.AddPhotoAlternate, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Добавить")
+                            Text("Добавить фото")
                         }
                     }
 
@@ -208,11 +210,12 @@ fun CreateReviewScreen(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            selectedPhotoUris.forEach { uri ->
+                            selectedPhotoUris.forEachIndexed { index, uri ->
                                 Box(
                                     modifier = Modifier
                                         .size(92.dp)
                                         .clip(RoundedCornerShape(18.dp))
+                                        .clickable { openedPhotoIndex = index }
                                 ) {
                                     AsyncImage(
                                         model = uri,
@@ -220,6 +223,7 @@ fun CreateReviewScreen(
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier.fillMaxSize()
                                     )
+
                                     IconButton(
                                         onClick = { selectedPhotoUris = selectedPhotoUris - uri },
                                         modifier = Modifier
@@ -241,8 +245,12 @@ fun CreateReviewScreen(
 
                     AssistChip(
                         onClick = {},
-                        label = { Text("Отзыв появится в приложении только после проверки модератором") },
-                        leadingIcon = { Icon(Icons.Default.DoneAll, contentDescription = null) }
+                        label = {
+                            Text("Отзыв появится в приложении только после проверки модератором")
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.DoneAll, contentDescription = null)
+                        }
                     )
                 }
             }
@@ -279,12 +287,20 @@ fun CreateReviewScreen(
                 TextButton(
                     onClick = {
                         showModerationDialog = false
-                        onBackClick()
+                        onSubmitted()
                     }
                 ) {
                     Text("Понятно")
                 }
             }
+        )
+    }
+
+    openedPhotoIndex?.let { index ->
+        FullScreenPhotoViewer(
+            images = selectedPhotoUris,
+            initialIndex = index,
+            onDismiss = { openedPhotoIndex = null }
         )
     }
 }

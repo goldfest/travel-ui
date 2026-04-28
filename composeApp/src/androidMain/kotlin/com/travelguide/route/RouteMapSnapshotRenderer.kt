@@ -5,12 +5,12 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import com.travelguide.domain.models.RouteMapDay
 import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
+import com.travelguide.ui.map.TravelMapTileSources
 
 class RouteMapSnapshotRenderer(
     private val context: Context
@@ -18,7 +18,7 @@ class RouteMapSnapshotRenderer(
     fun render(day: RouteMapDay, width: Int = 1200, height: Int = 800): Bitmap {
         Configuration.getInstance().userAgentValue = context.packageName
         val mapView = MapView(context).apply {
-            setTileSource(TileSourceFactory.MAPNIK)
+            setTileSource(TravelMapTileSources.CartoPositron)
             setMultiTouchControls(false)
             layout(0, 0, width, height)
         }

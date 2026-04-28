@@ -1,6 +1,7 @@
 package com.travelguide.ui.screens.admin
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -29,6 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.travelguide.admin.AdminUiState
+import com.travelguide.ui.components.FullScreenPhotoViewer
 import com.travelguide.core.MediaUrlResolver
 import com.travelguide.network.dto.poi.PoiMediaDto
 import com.travelguide.network.dto.review.ReportResponseDto
@@ -262,6 +264,8 @@ private fun ModerationCard(
     onApprove: () -> Unit,
     onReject: () -> Unit
 ) {
+    var openedPhotoIndex by remember { mutableStateOf<Int?>(null) }
+
     Card(shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -273,7 +277,7 @@ private fun ModerationCard(
 
             if (images.isNotEmpty()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    images.take(3).forEach { url ->
+                    images.take(3).forEachIndexed { index, url ->
                         AsyncImage(
                             model = url,
                             contentDescription = null,
@@ -283,6 +287,7 @@ private fun ModerationCard(
                                 .height(104.dp)
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .clickable { openedPhotoIndex = index }
                         )
                     }
                 }
@@ -299,5 +304,13 @@ private fun ModerationCard(
                 }
             }
         }
+    }
+
+    openedPhotoIndex?.let { index ->
+        FullScreenPhotoViewer(
+            images = images,
+            initialIndex = index,
+            onDismiss = { openedPhotoIndex = null }
+        )
     }
 }

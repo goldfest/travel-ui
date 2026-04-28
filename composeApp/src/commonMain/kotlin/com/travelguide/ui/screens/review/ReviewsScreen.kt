@@ -53,10 +53,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import com.travelguide.domain.models.Review
+import com.travelguide.ui.components.FullScreenPhotoViewer
 import com.travelguide.ui.components.RatingBar
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.ui.platform.LocalContext
+import coil.request.ImageRequest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -224,7 +228,9 @@ fun ReviewCard(
     onLike: () -> Unit,
     onReport: () -> Unit
 ) {
-    var openedImage by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    var openedPhotoIndex by remember { mutableStateOf<Int?>(null) }
+    val images = review.images.filter { it.isNotBlank() }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -250,13 +256,16 @@ fun ReviewCard(
                             )
                         }
                     }
+
                     Spacer(modifier = Modifier.width(12.dp))
+
                     Column {
                         Text(
                             text = review.user?.username ?: "Пользователь",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium
                         )
+
                         Text(
                             text = formatDate(review.createdAt),
                             style = MaterialTheme.typography.labelSmall,
@@ -268,24 +277,36 @@ fun ReviewCard(
                 RatingBar(rating = review.rating.toFloat())
             }
 
-            if (!review.comment.isNullOrEmpty()) {
+            if (!review.comment.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(text = review.comment)
             }
 
-            if (review.images.isNotEmpty()) {
+            if (images.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(12.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(review.images) { imageUrl ->
-                        AsyncImage(
-                            model = imageUrl,
-                            contentDescription = "Фото из отзыва",
-                            contentScale = ContentScale.Crop,
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    itemsIndexed(images) { index, imageUrl ->
+                        Surface(
                             modifier = Modifier
                                 .size(92.dp)
                                 .clip(RoundedCornerShape(18.dp))
-                                .clickable { openedImage = imageUrl }
-                        )
+                                .clickable { openedPhotoIndex = index },
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(18.dp)
+                        ) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(imageUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Фото из отзыва",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
                     }
                 }
             }
@@ -296,6 +317,7 @@ fun ReviewCard(
                 IconButton(onClick = onLike) {
                     Icon(Icons.Default.ThumbUp, contentDescription = "Лайк")
                 }
+
                 Text(review.likesCount.toString())
 
                 Spacer(modifier = Modifier.width(16.dp))
@@ -307,34 +329,12 @@ fun ReviewCard(
         }
     }
 
-    openedImage?.let { imageUrl ->
-        Dialog(onDismissRequest = { openedImage = null }) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(28.dp))
-                    .background(Color.Black)
-            ) {
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = "Фото отзыва",
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(520.dp)
-                )
-
-                IconButton(
-                    onClick = { openedImage = null },
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp)
-                        .background(Color.Black.copy(alpha = 0.55f), CircleShape)
-                ) {
-                    Icon(Icons.Default.Close, contentDescription = "Закрыть", tint = Color.White)
-                }
-            }
-        }
+    openedPhotoIndex?.let { index ->
+        FullScreenPhotoViewer(
+            images = images,
+            initialIndex = index,
+            onDismiss = { openedPhotoIndex = null }
+        )
     }
 }
 

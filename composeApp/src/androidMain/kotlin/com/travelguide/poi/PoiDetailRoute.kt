@@ -87,6 +87,16 @@ fun PoiDetailRoute(
         onWriteReview = onWriteReview,
         onViewReviews = onViewReviews,
         onReportProblem = onReportProblem,
+
+        onUploadPoiPhotos = { files ->
+            poiVm.uploadPoiPhotos(files)
+        },
+        isPhotoUploading = poiState.isPhotoUploading,
+        photoUploadMessage = poiState.photoUploadMessage,
+        onPhotoUploadMessageShown = {
+            poiVm.clearPhotoUploadMessage()
+        },
+
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState)
         }

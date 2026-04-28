@@ -95,6 +95,7 @@ import com.travelguide.theme.TravelPanelSoft
 import com.travelguide.theme.TravelScrim
 import com.travelguide.theme.TravelTextSecondary
 import com.travelguide.network.upload.UploadFile
+import com.travelguide.ui.components.FullScreenPhotoViewer
 import com.travelguide.ui.util.toUploadFile
 
 private val LightInfoBackground = Color(0xFFF4F1E9)
@@ -125,7 +126,7 @@ fun POIDetailScreen(
 ) {
     val context = LocalContext.current
     var selectedUploadUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
-    var showPoiPhotoModerationDialog by remember { mutableStateOf(false) }
+    var openedGalleryIndex by remember { mutableStateOf<Int?>(null) }
     val poiPhotoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 8)
     ) { uris ->
@@ -133,7 +134,6 @@ fun POIDetailScreen(
         val files = uris.take(8).mapNotNull { it.toUploadFile(context) }
         if (files.isNotEmpty()) {
             onUploadPoiPhotos(files)
-            showPoiPhotoModerationDialog = true
         }
     }
 
@@ -308,7 +308,8 @@ fun POIDetailScreen(
                         item {
                             PhotoGallerySection(
                                 images = poi.images,
-                                title = "Галерея фото"
+                                title = "Галерея фото",
+                                onImageClick = { openedGalleryIndex = it }
                             )
                         }
                     }
@@ -372,10 +373,9 @@ fun POIDetailScreen(
         }
     }
 
-    if (showPoiPhotoModerationDialog || photoUploadMessage != null) {
+    if (photoUploadMessage != null) {
         AlertDialog(
             onDismissRequest = {
-                showPoiPhotoModerationDialog = false
                 onPhotoUploadMessageShown()
             },
             icon = { Icon(Icons.Default.DoneAll, contentDescription = null, tint = TravelAccent) },
@@ -383,14 +383,12 @@ fun POIDetailScreen(
             text = {
                 Text(
                     text = photoUploadMessage
-                        ?: "Спасибо! Фото объекта будут проверены модератором и появятся в галерее после одобрения."
                 )
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        showPoiPhotoModerationDialog = false
-                        onPhotoUploadMessageShown()
+                                onPhotoUploadMessageShown()
                     }
                 ) {
                     Text("Понятно")
@@ -398,14 +396,26 @@ fun POIDetailScreen(
             }
         )
     }
+
+    openedGalleryIndex?.let { index ->
+        val images = poi?.images?.filter { it.isNotBlank() }.orEmpty()
+        FullScreenPhotoViewer(
+            images = images,
+            initialIndex = index,
+            onDismiss = { openedGalleryIndex = null }
+        )
+    }
 }
 
 @Composable
 private fun HeroPhotoSection(poi: POI) {
+    val context = LocalContext.current
     val images = poi.images.filter { it.isNotBlank() }
     val listState = rememberLazyListState()
     val currentPhoto by remember {
-        derivedStateOf { listState.firstVisibleItemIndex.coerceAtMost((images.size - 1).coerceAtLeast(0)) }
+        derivedStateOf {
+            listState.firstVisibleItemIndex.coerceAtMost((images.size - 1).coerceAtLeast(0))
+        }
     }
 
     Box(
@@ -420,7 +430,7 @@ private fun HeroPhotoSection(poi: POI) {
             ) {
                 items(images) { imageUrl ->
                     AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
+                        model = ImageRequest.Builder(context)
                             .data(imageUrl)
                             .crossfade(true)
                             .build(),
@@ -433,26 +443,10 @@ private fun HeroPhotoSection(poi: POI) {
                 }
             }
         } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.linearGradient(
-                            listOf(
-                                Color(0xFF5B6058),
-                                Color(0xFF2B312C),
-                                TravelPanel
-                            )
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = poi.poiType?.icon ?: "📍",
-                    fontSize = 56.sp,
-                    color = Color.White
-                )
-            }
+            PoiTypeFallbackPhoto(
+                poi = poi,
+                modifier = Modifier.fillMaxSize()
+            )
         }
 
         Box(
@@ -499,6 +493,57 @@ private fun HeroPhotoSection(poi: POI) {
         }
     }
 }
+
+@Composable
+private fun PoiTypeFallbackPhoto(
+    poi: POI,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val icon = poi.poiType?.icon?.trim()
+
+    Box(
+        modifier = modifier
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        Color(0xFF5B6058),
+                        Color(0xFF2B312C),
+                        TravelPanel
+                    )
+                )
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        if (!icon.isNullOrBlank() && icon.isImageUrl()) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(icon)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = poi.poiType?.name ?: poi.name,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .size(118.dp)
+                    .clip(RoundedCornerShape(30.dp))
+            )
+        } else {
+            Text(
+                text = icon?.takeIf { it.isNotBlank() } ?: "📍",
+                fontSize = 56.sp,
+                color = Color.White
+            )
+        }
+    }
+}
+
+private fun String.isImageUrl(): Boolean {
+    return startsWith("http://", ignoreCase = true) ||
+            startsWith("https://", ignoreCase = true) ||
+            startsWith("content://", ignoreCase = true)
+}
+
+
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -725,18 +770,22 @@ private fun DarkInfoPointRow(
 @Composable
 private fun PhotoGallerySection(
     images: List<String>,
-    title: String
+    title: String,
+    onImageClick: (Int) -> Unit
 ) {
     val visibleImages = images.filter { it.isNotBlank() }
     if (visibleImages.isEmpty()) return
 
     SectionCard(title = title) {
-        GalleryMosaic(images = visibleImages)
+        GalleryMosaic(images = visibleImages, onImageClick = onImageClick)
     }
 }
 
 @Composable
-private fun GalleryMosaic(images: List<String>) {
+private fun GalleryMosaic(
+    images: List<String>,
+    onImageClick: (Int) -> Unit
+) {
     val context = LocalContext.current
     val first = images.getOrNull(0)
     val second = images.getOrNull(1)
@@ -753,7 +802,8 @@ private fun GalleryMosaic(images: List<String>) {
                 contentDescription = "Фото 1",
                 modifier = Modifier
                     .weight(1f)
-                    .height(172.dp),
+                    .height(172.dp)
+                    .clickable { onImageClick(0) },
                 context = context
             )
         }
@@ -768,7 +818,8 @@ private fun GalleryMosaic(images: List<String>) {
                     contentDescription = "Фото 2",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(82.dp),
+                        .height(82.dp)
+                        .clickable { onImageClick(1) },
                     context = context
                 )
             }
@@ -783,7 +834,8 @@ private fun GalleryMosaic(images: List<String>) {
                         contentDescription = "Фото 3",
                         modifier = Modifier
                             .weight(1f)
-                            .height(80.dp),
+                            .height(80.dp)
+                            .clickable { onImageClick(2) },
                         context = context
                     )
                 }
@@ -794,7 +846,8 @@ private fun GalleryMosaic(images: List<String>) {
                             .weight(1f)
                             .height(80.dp)
                             .clip(RoundedCornerShape(14.dp))
-                            .background(Color(0xFF96969C)),
+                            .background(Color(0xFF96969C))
+                            .clickable { onImageClick(3) },
                         contentAlignment = Alignment.Center
                     ) {
                         Text(

@@ -108,9 +108,7 @@ fun buildMarker(
 }
 
 fun applyMapTheme(mapView: MapView, darkTheme: Boolean) {
-    mapView.overlayManager.tilesOverlay.setColorFilter(
-        if (darkTheme) TilesOverlay.INVERT_COLORS else null
-    )
+    mapView.overlayManager.tilesOverlay.setColorFilter(null)
 }
 
 fun routeStrokeColor(): Int = ExplorerMapLine.toArgb()

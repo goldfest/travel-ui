@@ -25,17 +25,24 @@ fun CreateReviewRoute(
 
     val state by vm.state.collectAsState()
 
-    LaunchedEffect(state.success) {
-        if (state.success) onSubmitted()
-    }
 
     CreateReviewScreen(
         poiId = poiId,
         isLoading = state.isLoading,
+        success = state.success,
         error = state.error,
         onBackClick = onBackClick,
+        onSubmitted = onSubmitted,
         onSubmit = { rating, comment ->
             vm.submit(poiId, rating, comment)
+        },
+        onSubmitWithPhotos = { rating, comment, files ->
+            vm.submit(
+                poiId = poiId,
+                rating = rating,
+                comment = comment,
+                files = files
+            )
         }
     )
 }

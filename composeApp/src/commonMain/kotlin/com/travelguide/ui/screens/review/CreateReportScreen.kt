@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.travelguide.network.upload.UploadFile
+import com.travelguide.ui.components.FullScreenPhotoViewer
 import com.travelguide.ui.util.toUploadFile
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -44,6 +45,7 @@ fun CreateReportScreen(
     var reportType by remember { mutableStateOf("incorrect_info") }
     var comment by remember { mutableStateOf("") }
     var selectedPhotoUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    var openedPhotoIndex by remember { mutableStateOf<Int?>(null) }
 
     val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 5)
@@ -152,11 +154,12 @@ fun CreateReportScreen(
 
                     if (selectedPhotoUris.isNotEmpty()) {
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            selectedPhotoUris.forEach { uri ->
+                            selectedPhotoUris.forEachIndexed { index, uri ->
                                 Box(
                                     modifier = Modifier
                                         .size(92.dp)
                                         .clip(RoundedCornerShape(18.dp))
+                                        .clickable { openedPhotoIndex = index }
                                 ) {
                                     AsyncImage(
                                         model = uri,
@@ -204,5 +207,13 @@ fun CreateReportScreen(
                 Text("Отправить жалобу")
             }
         }
+    }
+
+    openedPhotoIndex?.let { index ->
+        FullScreenPhotoViewer(
+            images = selectedPhotoUris,
+            initialIndex = index,
+            onDismiss = { openedPhotoIndex = null }
+        )
     }
 }

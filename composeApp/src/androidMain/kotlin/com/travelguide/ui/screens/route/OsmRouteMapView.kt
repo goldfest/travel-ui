@@ -16,8 +16,8 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.travelguide.domain.models.RouteMapDay
 import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.views.MapView
+import com.travelguide.ui.map.TravelMapTileSources
 
 @Composable
 fun OsmRouteMapView(
@@ -37,7 +37,7 @@ fun OsmRouteMapView(
         factory = { mapView },
         modifier = modifier,
         update = { mv ->
-            mv.setTileSource(TileSourceFactory.MAPNIK)
+            mv.setTileSource(TravelMapTileSources.CartoPositron)
             applyMapTheme(mv, darkTheme)
 
             val currentDay = day ?: return@AndroidView
@@ -82,7 +82,7 @@ private fun rememberMapViewWithLifecycle(
     val mapView = remember {
         Configuration.getInstance().userAgentValue = context.packageName
         MapView(context).apply {
-            setTileSource(TileSourceFactory.MAPNIK)
+            setTileSource(TravelMapTileSources.CartoPositron)
             setMultiTouchControls(true)
             controller.setZoom(12.0)
             minZoomLevel = 4.0
