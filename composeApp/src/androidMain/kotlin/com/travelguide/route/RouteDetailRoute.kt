@@ -40,6 +40,13 @@ fun RouteDetailRoute(
         vm.loadRoute(routeId)
     }
 
+    LaunchedEffect(state.optimizationMessageId) {
+        val message = state.optimizationMessage
+        if (state.optimizationMessageId != 0L && !message.isNullOrBlank()) {
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+        }
+    }
+
     fun toast(message: String) {
         Toast.makeText(context, message, Toast.LENGTH_LONG).show()
     }
@@ -55,6 +62,7 @@ fun RouteDetailRoute(
         onViewList = onViewList,
         isOfflineMode = false,
         isOfflineAvailable = state.isOfflineAvailable,
+        isOptimizing = state.isOptimizing,
         onOptimizeClick = { request -> vm.optimize(routeId, request) },
         onDownloadOfflineClick = {
             scope.launch {

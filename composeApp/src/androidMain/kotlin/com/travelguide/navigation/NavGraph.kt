@@ -6,6 +6,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.travelguide.AppContainer
 import com.travelguide.BootRoute
+import com.travelguide.domain.models.TransportMode
 import com.travelguide.auth.LoginRoute
 import com.travelguide.auth.RegisterRoute
 import com.travelguide.city.CityInfoRoute
@@ -13,6 +14,7 @@ import com.travelguide.city.CityListRoute
 import com.travelguide.city.CityPoiMapRoute
 import com.travelguide.favorite.FavoritesRoute
 import com.travelguide.notification.NotificationsRoute
+import com.travelguide.personalisation.CollectionDetailRoute
 import com.travelguide.personalisation.CollectionEditRoute
 import com.travelguide.personalisation.CollectionsRoute
 import com.travelguide.poi.POIListRoute
@@ -27,12 +29,14 @@ import com.travelguide.review.EditReviewRoute
 import com.travelguide.review.MyReviewsRoute
 import com.travelguide.review.ReviewsRoute
 import com.travelguide.route.OfflineRouteDetailRoute
+import com.travelguide.route.OneTimePoiRouteMapRoute
 import com.travelguide.route.RouteDetailRoute
 import com.travelguide.route.RouteEditorRoute
 import com.travelguide.route.RouteListFilter
 import com.travelguide.route.RouteListRoute
 import com.travelguide.route.RouteMapRoute
 import com.travelguide.route.SelectRouteForPoiRoute
+import com.travelguide.route.StartPointPickerRoute
 import com.travelguide.search.SearchRoute
 import com.travelguide.admin.AdminRoute
 
@@ -135,6 +139,9 @@ fun AppNavHost(
                 onChooseExistingRoute = { cityId, selectedPoiId ->
                     navController.navigate("selectRouteForPoi/$cityId/$selectedPoiId")
                 },
+                onBuildRouteToPoi = { cityId, selectedPoiId ->
+                    navController.navigate("oneTimePoiStartPicker/$cityId/$selectedPoiId")
+                },
                 onAddToFavorite = { },
                 onWriteReview = { navController.navigate("createReview/$poiId") },
                 onViewReviews = { navController.navigate("reviews/$poiId") },
@@ -156,6 +163,43 @@ fun AppNavHost(
                         popUpTo("poiDetail/$poiId") { inclusive = false }
                     }
                 }
+            )
+        }
+
+        composable("oneTimePoiStartPicker/{cityId}/{poiId}") { backStackEntry ->
+            val cityId = backStackEntry.arguments?.getString("cityId")?.toIntOrNull() ?: 1
+            val poiId = backStackEntry.arguments?.getString("poiId")?.toIntOrNull() ?: 1
+
+            StartPointPickerRoute(
+                container = container,
+                poiId = poiId,
+                onBackClick = { navController.popBackStack() },
+                onStartSelected = { latitude, longitude, transportMode ->
+                    navController.navigate(
+                        "oneTimePoiRouteMap/$cityId/$poiId?lat=$latitude&lng=$longitude&mode=${transportMode.name}"
+                    )
+                }
+            )
+        }
+
+        composable("oneTimePoiRouteMap/{cityId}/{poiId}?lat={lat}&lng={lng}&mode={mode}") { backStackEntry ->
+            val cityId = backStackEntry.arguments?.getString("cityId")?.toIntOrNull() ?: 1
+            val poiId = backStackEntry.arguments?.getString("poiId")?.toIntOrNull() ?: 1
+            val latitude = backStackEntry.arguments?.getString("lat")?.toDoubleOrNull() ?: 0.0
+            val longitude = backStackEntry.arguments?.getString("lng")?.toDoubleOrNull() ?: 0.0
+            val transportMode = runCatching {
+                TransportMode.valueOf(backStackEntry.arguments?.getString("mode") ?: TransportMode.WALK.name)
+            }.getOrDefault(TransportMode.WALK)
+
+            OneTimePoiRouteMapRoute(
+                container = container,
+                cityId = cityId,
+                poiId = poiId,
+                fromLatitude = latitude,
+                fromLongitude = longitude,
+                transportMode = transportMode,
+                onBackClick = { navController.popBackStack() },
+                onOpenPoi = { openedPoiId -> navController.navigate("poiDetail/$openedPoiId") }
             )
         }
 
@@ -331,9 +375,26 @@ fun AppNavHost(
             CollectionsRoute(
                 container = container,
                 onBackClick = { navController.popBackStack() },
-                onEditCollection = { collectionId ->
-                    navController.navigate("collectionEdit/$collectionId")
+                onCollectionClick = { collectionId ->
+                    navController.navigate("collectionDetail/$collectionId")
                 }
+            )
+        }
+
+        composable("collectionDetail/{collectionId}") { backStackEntry ->
+            val collectionId = backStackEntry.arguments?.getString("collectionId")?.toIntOrNull() ?: 1
+
+            CollectionDetailRoute(
+                container = container,
+                collectionId = collectionId,
+                onBackClick = { navController.popBackStack() },
+                onEditClick = { openedCollectionId ->
+                    navController.navigate("collectionEdit/$openedCollectionId")
+                },
+                onDeleted = {
+                    navController.popBackStack("collections", inclusive = false)
+                },
+                onOpenPoi = { poiId -> navController.navigate("poiDetail/$poiId") }
             )
         }
 

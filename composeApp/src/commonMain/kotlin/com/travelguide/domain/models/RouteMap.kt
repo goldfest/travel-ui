@@ -34,7 +34,9 @@ data class RouteMapPoint(
     val latitude: Double,
     val longitude: Double,
     val markerType: String,
-    val estimatedVisitMinutes: Int? = null
+    val estimatedVisitMinutes: Int? = null,
+    val plannedArrivalAt: String? = null,
+    val plannedDepartureAt: String? = null
 )
 
 @Serializable

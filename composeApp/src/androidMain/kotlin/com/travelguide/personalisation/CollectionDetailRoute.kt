@@ -7,18 +7,19 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.travelguide.AppContainer
 import com.travelguide.auth.SimpleViewModelFactory
-import com.travelguide.ui.screens.personalisation.CollectionEditScreen
+import com.travelguide.ui.screens.personalisation.CollectionDetailScreen
 
 @Composable
-fun CollectionEditRoute(
+fun CollectionDetailRoute(
     container: AppContainer,
     collectionId: Int,
     onBackClick: () -> Unit,
+    onEditClick: (Int) -> Unit,
     onDeleted: () -> Unit,
-    onCollectionUpdated: (com.travelguide.domain.models.Collection) -> Unit
+    onOpenPoi: (Int) -> Unit
 ) {
     val vm: CollectionEditViewModel = viewModel(
-        key = "collection-edit-$collectionId",
+        key = "collection-detail-$collectionId",
         factory = SimpleViewModelFactory {
             CollectionEditViewModel(container.collectionRepository)
         }
@@ -30,38 +31,21 @@ fun CollectionEditRoute(
         vm.load(collectionId)
     }
 
-    CollectionEditScreen(
+    CollectionDetailScreen(
         isLoading = state.isLoading,
-        isSaving = state.isSaving,
         isDeleting = state.isDeleting,
-        collectionName = state.collection?.name ?: "",
-        collectionDescription = state.collection?.description.orEmpty(),
-        collectionCoverUrl = state.collection?.coverUrl.orEmpty(),
+        collection = state.collection,
         pois = state.pois,
         errorMessage = state.errorMessage,
-        successMessage = state.successMessage,
         onBackClick = onBackClick,
-        onSave = { name, description, coverUrl ->
-            vm.updateCollection(
-                collectionId = collectionId,
-                name = name,
-                description = description,
-                coverUrl = coverUrl,
-                onSuccess = onCollectionUpdated
-            )
-        },
-        onRemovePoi = { poiId ->
-            vm.removePoi(
-                collectionId = collectionId,
-                poiId = poiId,
-                onCollectionChanged = onCollectionUpdated
-            )
-        },
-        onDeleteCollection = {
+        onEditClick = { onEditClick(collectionId) },
+        onDeleteClick = {
             vm.deleteCollection(
                 collectionId = collectionId,
                 onSuccess = onDeleted
             )
-        }
+        },
+        onRetry = { vm.load(collectionId) },
+        onPoiClick = onOpenPoi
     )
 }

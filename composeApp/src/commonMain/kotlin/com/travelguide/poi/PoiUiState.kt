@@ -8,6 +8,10 @@ data class PoiListUiState(
     val isLoading: Boolean = false,
     val items: List<PoiCardUiModel> = emptyList(),
     val poiTypes: List<POIType> = emptyList(),
+    val currentPage: Int = 0,
+    val pageSize: Int = 10,
+    val totalPages: Int = 0,
+    val totalElements: Long = 0,
     val errorMessage: String? = null
 )
 

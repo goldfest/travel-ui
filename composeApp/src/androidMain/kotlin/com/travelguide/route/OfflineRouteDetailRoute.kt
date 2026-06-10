@@ -35,6 +35,7 @@ fun OfflineRouteDetailRoute(
         errorMessage = state.errorMessage,
         isOfflineMode = true,
         isOfflineAvailable = true,
+        isOptimizing = state.isOptimizing,
         onRetry = { vm.loadOfflineRoute(routeId) },
         onBackClick = onBackClick,
         onEditClick = onEditClick,

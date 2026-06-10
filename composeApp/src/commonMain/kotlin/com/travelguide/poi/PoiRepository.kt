@@ -5,6 +5,8 @@ import com.travelguide.domain.models.POI
 import com.travelguide.domain.models.POIType
 import com.travelguide.domain.models.PoiWorkingHours
 import com.travelguide.core.MediaUrlResolver
+import com.travelguide.core.PagedResult
+import com.travelguide.network.dto.common.PageResponseDto
 import com.travelguide.network.dto.poi.PoiResponseDto
 import com.travelguide.network.dto.poi.PoiSearchRequestDto
 import com.travelguide.network.dto.poi.PoiTypeResponseDto
@@ -26,13 +28,29 @@ class PoiRepository(
         sortBy: String = "name",
         sortDirection: String = "ASC"
     ): List<POI> {
+        return getPoisByCityPage(
+            cityId = cityId,
+            page = page,
+            size = size,
+            sortBy = sortBy,
+            sortDirection = sortDirection
+        ).content
+    }
+
+    suspend fun getPoisByCityPage(
+        cityId: Int,
+        page: Int = 0,
+        size: Int = 50,
+        sortBy: String = "name",
+        sortDirection: String = "ASC"
+    ): PagedResult<POI> {
         return api.getPoisByCity(
             cityId = cityId.toLong(),
             page = page,
             size = size,
             sortBy = sortBy,
             sortDirection = sortDirection
-        ).content.map { it.toDomain() }
+        ).toPagedResult { it.toDomain() }
     }
 
     suspend fun getPoiById(id: Int): POI {
@@ -48,11 +66,43 @@ class PoiRepository(
         maxPrice: Int? = null,
         verifiedOnly: Boolean = true,
         excludeClosed: Boolean = true,
-        page: Int = 1,
+        page: Int = 0,
         size: Int = 50,
         sortBy: String = "name",
         sortDirection: String = "ASC"
     ): List<POI> {
+        return searchPoisPage(
+            cityId = cityId,
+            query = query,
+            poiTypeIds = poiTypeIds,
+            minRating = minRating,
+            minPrice = minPrice,
+            maxPrice = maxPrice,
+            verifiedOnly = verifiedOnly,
+            excludeClosed = excludeClosed,
+            // poi-service валидирует search request как 1-based: page >= 1.
+            // Во ViewModel/UI страницы храним как 0-based, поэтому перед отправкой прибавляем 1.
+            page = page + 1,
+            size = size,
+            sortBy = sortBy,
+            sortDirection = sortDirection
+        ).content
+    }
+
+    suspend fun searchPoisPage(
+        cityId: Int,
+        query: String? = null,
+        poiTypeIds: List<Int> = emptyList(),
+        minRating: Double? = null,
+        minPrice: Int? = null,
+        maxPrice: Int? = null,
+        verifiedOnly: Boolean = true,
+        excludeClosed: Boolean = true,
+        page: Int = 0,
+        size: Int = 50,
+        sortBy: String = "name",
+        sortDirection: String = "ASC"
+    ): PagedResult<POI> {
         val request = PoiSearchRequestDto(
             cityId = cityId.toLong(),
             searchQuery = query?.takeIf { it.isNotBlank() },
@@ -62,13 +112,15 @@ class PoiRepository(
             maxPrice = maxPrice,
             verifiedOnly = verifiedOnly,
             excludeClosed = excludeClosed,
-            page = page,
+            // poi-service валидирует search request как 1-based: page >= 1.
+            // Во ViewModel/UI страницы храним как 0-based, поэтому перед отправкой прибавляем 1.
+            page = page + 1,
             size = size,
             sortBy = sortBy,
             sortDirection = sortDirection
         )
 
-        return api.searchPois(request).content.map { it.toDomain() }
+        return api.searchPois(request).toPagedResult { it.toDomain() }
     }
 
     suspend fun getPoiTypes(): List<POIType> {
@@ -79,6 +131,18 @@ class PoiRepository(
         if (files.isEmpty()) return
         api.uploadUserPhotos(poiId.toLong(), files)
     }
+}
+
+private inline fun <T, R> PageResponseDto<T>.toPagedResult(transform: (T) -> R): PagedResult<R> {
+    return PagedResult(
+        content = content.map(transform),
+        totalElements = totalElements,
+        totalPages = totalPages,
+        page = number,
+        size = size,
+        first = first,
+        last = last
+    )
 }
 
 private fun PoiResponseDto.toDomain(): POI {

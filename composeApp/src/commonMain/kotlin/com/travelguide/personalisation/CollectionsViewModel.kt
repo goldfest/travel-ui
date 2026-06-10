@@ -43,13 +43,15 @@ class CollectionsViewModel(
 
     fun createCollection(
         name: String,
-        description: String?
+        description: String?,
+        coverUrl: String? = null
     ) {
         viewModelScope.launch {
             runCatching {
                 repository.createCollection(
                     name = name,
-                    description = description
+                    description = description,
+                    coverUrl = coverUrl
                 )
             }.onSuccess { created ->
                 _state.value = _state.value.copy(

@@ -7,6 +7,7 @@ import com.travelguide.domain.models.City
 import com.travelguide.domain.models.POI
 import com.travelguide.domain.models.Route
 import com.travelguide.domain.models.TransportMode
+import com.travelguide.network.dto.route.CityGraphStatusResponseDto
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -229,25 +230,29 @@ class RouteEditorViewModel(
             _state.value = _state.value.copy(
                 isGraphDownloadInProgress = true,
                 isGraphLoading = true,
+                graphProgressPercent = 0,
                 graphMessage = "Подготавливаем граф города…",
                 errorMessage = null
             )
 
             runCatching {
-                routeRepository.requestCityGraphDownload(cityId)
-                repeat(30) {
-                    if (routeRepository.isCityGraphReady(cityId)) {
-                        return@runCatching true
+                var status = routeRepository.requestCityGraphDownloadStatus(cityId)
+                _state.value = _state.value.applyGraphStatus(status, forceDownloading = !status.ready)
+
+                repeat(90) {
+                    if (status.ready || status.status == "FAILED") {
+                        return@runCatching status
                     }
-                    delay(2000)
+                    delay(7_000)
+                    status = routeRepository.getCityGraphStatus(cityId)
+                    _state.value = _state.value.applyGraphStatus(status, forceDownloading = !status.ready)
                 }
-                false
-            }.onSuccess { ready ->
-                _state.value = _state.value.copy(
+                status
+            }.onSuccess { status ->
+                _state.value = _state.value.applyGraphStatus(status).copy(
                     isGraphDownloadInProgress = false,
                     isGraphLoading = false,
-                    isGraphReady = ready,
-                    graphMessage = if (ready) {
+                    graphMessage = status.message ?: if (status.ready) {
                         "Граф дорог готов. Можно создавать маршрут."
                     } else {
                         "Граф ещё готовится. Нажмите кнопку позже, чтобы обновить статус."
@@ -257,6 +262,7 @@ class RouteEditorViewModel(
                 _state.value = _state.value.copy(
                     isGraphDownloadInProgress = false,
                     isGraphLoading = false,
+                    graphProgressPercent = 0,
                     errorMessage = e.toUserMessage("Не удалось скачать граф города")
                 )
             }
@@ -267,22 +273,16 @@ class RouteEditorViewModel(
         if (_state.value.mode == RouteEditorMode.EDIT) return
         viewModelScope.launch {
             _state.value = _state.value.copy(isGraphLoading = true, graphMessage = null)
-            runCatching { routeRepository.isCityGraphReady(cityId) }
-                .onSuccess { ready ->
-                    _state.value = _state.value.copy(
-                        isGraphLoading = false,
-                        isGraphReady = ready,
-                        graphMessage = if (ready) {
-                            "Граф дорог уже скачан."
-                        } else {
-                            "Перед созданием маршрута нужно скачать граф города."
-                        }
-                    )
+            runCatching { routeRepository.getCityGraphStatus(cityId) }
+                .onSuccess { status ->
+                    _state.value = _state.value.applyGraphStatus(status).copy(isGraphLoading = false)
                 }
                 .onFailure {
                     _state.value = _state.value.copy(
                         isGraphLoading = false,
                         isGraphReady = false,
+                        isGraphDownloadInProgress = false,
+                        graphProgressPercent = 0,
                         graphMessage = "Не удалось проверить граф. Для создания маршрута потребуется повторная проверка."
                     )
                 }
@@ -596,6 +596,28 @@ class RouteEditorViewModel(
                     (poi.address?.contains(query, ignoreCase = true) == true)
         }
     }
+}
+
+
+private fun RouteEditorUiState.applyGraphStatus(
+    status: CityGraphStatusResponseDto,
+    forceDownloading: Boolean = false
+): RouteEditorUiState {
+    val normalizedProgress = status.progressPercent.coerceIn(0, 100)
+    val downloading = forceDownloading || status.downloading
+    val defaultMessage = when {
+        status.ready -> "Граф дорог уже скачан."
+        status.status == "FAILED" -> "Не удалось подготовить граф дорог. Попробуйте повторить загрузку."
+        downloading -> "Скачиваем и подготавливаем граф дорог…"
+        else -> "Перед созданием маршрута нужно скачать граф города."
+    }
+    return copy(
+        isGraphReady = status.ready,
+        isGraphLoading = downloading,
+        isGraphDownloadInProgress = downloading,
+        graphProgressPercent = normalizedProgress,
+        graphMessage = status.message ?: defaultMessage
+    )
 }
 
 private fun buildCreateDraftKey(cityId: Int?, initialPoiId: Int?): String =

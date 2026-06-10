@@ -31,6 +31,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,6 +49,10 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
+
+private sealed class OptimizationTimeTarget {
+    data class Day(val dayIndex: Int, val isStart: Boolean) : OptimizationTimeTarget()
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,7 +72,7 @@ fun RouteOptimizationDialog(
         mutableStateOf(sortedDays.firstOrNull()?.routeDate.orEmpty())
     }
     var showDatePicker by remember { mutableStateOf(false) }
-    var selectedTimeTarget by remember { mutableStateOf<Pair<Int, Boolean>?>(null) }
+    var selectedTimeTarget by remember { mutableStateOf<OptimizationTimeTarget?>(null) }
     var showValidationError by remember { mutableStateOf(false) }
 
     val daySettings = remember(route.id) {
@@ -100,14 +105,12 @@ fun RouteOptimizationDialog(
     val visitDurationInputs = remember(route.id) {
         mutableStateMapOf<Long, String>().apply {
             sortedDays.flatMap { it.points }.forEach { point ->
-                put(point.id.toLong(), (point.estimatedVisitMinutes ?: 60).toString())
+                put(point.id.toLong(), point.estimatedVisitMinutes.toString())
             }
         }
     }
 
-    val touchedVisitFields = remember(route.id) {
-        mutableStateMapOf<Long, Boolean>()
-    }
+    val touchedVisitFields = remember(route.id) { mutableStateMapOf<Long, Boolean>() }
 
     fun isVisitMinutesValid(value: String): Boolean {
         val parsed = value.toIntOrNull()
@@ -115,7 +118,9 @@ fun RouteOptimizationDialog(
     }
 
     fun hasInvalidVisitFields(): Boolean {
-        return visitDurationInputs.values.any { !isVisitMinutesValid(it) }
+        return visitDurationInputs.keys.any { pointId ->
+            !isVisitMinutesValid(visitDurationInputs[pointId].orEmpty())
+        }
     }
 
     if (showDatePicker) {
@@ -150,36 +155,41 @@ fun RouteOptimizationDialog(
         }
     }
 
-    selectedTimeTarget?.let { (index, isStart) ->
-        val day = sortedDays[index]
-        val current = daySettings[day.id.toLong()] ?: return@let
-        val state = rememberDialogTimeState(if (isStart) current.dayStartTime else current.dayEndTime)
+    selectedTimeTarget?.let { target ->
+        when (target) {
+            is OptimizationTimeTarget.Day -> {
+                val day = sortedDays[target.dayIndex]
+                val current = daySettings[day.id.toLong()] ?: return@let
+                val currentValue = if (target.isStart) current.dayStartTime else current.dayEndTime
+                val state = rememberDialogTimeState(currentValue)
 
-        AlertDialog(
-            onDismissRequest = { selectedTimeTarget = null },
-            title = { Text(if (isStart) "Время начала" else "Время окончания") },
-            text = { TimeInput(state = state) },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val newValue = "%02d:%02d".format(state.hour, state.minute)
-                        daySettings[day.id.toLong()] = if (isStart) {
-                            current.copy(dayStartTime = newValue)
-                        } else {
-                            current.copy(dayEndTime = newValue)
+                AlertDialog(
+                    onDismissRequest = { selectedTimeTarget = null },
+                    title = { Text(if (target.isStart) "Время начала дня" else "Время окончания дня") },
+                    text = { TimeInput(state = state) },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                val newValue = "%02d:%02d".format(state.hour, state.minute)
+                                daySettings[day.id.toLong()] = if (target.isStart) {
+                                    current.copy(dayStartTime = newValue)
+                                } else {
+                                    current.copy(dayEndTime = newValue)
+                                }
+                                selectedTimeTarget = null
+                            }
+                        ) {
+                            Text("ОК")
                         }
-                        selectedTimeTarget = null
+                    },
+                    dismissButton = {
+                        OutlinedButton(onClick = { selectedTimeTarget = null }) {
+                            Text("Отмена")
+                        }
                     }
-                ) {
-                    Text("ОК")
-                }
-            },
-            dismissButton = {
-                OutlinedButton(onClick = { selectedTimeTarget = null }) {
-                    Text("Отмена")
-                }
+                )
             }
-        )
+        }
     }
 
     AlertDialog(
@@ -206,12 +216,17 @@ fun RouteOptimizationDialog(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Сохранить порядок пользователя")
                         }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Время посещения будет рассчитано алгоритмом автоматически с учётом начала дня, окончания дня и длительности посещения объектов.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
 
                 item {
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.42f)
                         )
@@ -235,7 +250,7 @@ fun RouteOptimizationDialog(
                 if (showValidationError) {
                     item {
                         Text(
-                            text = "Заполни корректно все поля «Минут на посещение». Пустые значения отправлять нельзя.",
+                            text = "Заполни корректно длительность посещения для каждой точки. Пустые значения отправлять нельзя.",
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -252,19 +267,19 @@ fun RouteOptimizationDialog(
                         date = config.routeDate,
                         startTime = config.dayStartTime,
                         endTime = config.dayEndTime,
-                        onStartClick = { selectedTimeTarget = index to true },
-                        onEndClick = { selectedTimeTarget = index to false },
+                        onStartClick = { selectedTimeTarget = OptimizationTimeTarget.Day(index, true) },
+                        onEndClick = { selectedTimeTarget = OptimizationTimeTarget.Day(index, false) },
                         points = day.points.sortedBy { it.orderIndex }.map { point ->
                             val pointId = point.id.toLong()
                             DayPointVisitField(
                                 pointId = pointId,
-                                pointName = point.poiName ?: point.poi?.name.orEmpty(),
-                                value = visitDurationInputs[pointId].orEmpty(),
-                                isError = touchedVisitFields[pointId] == true &&
+                                pointName = point.poiName ?: point.poi?.name ?: "Точка #${point.orderIndex}",
+                                visitDurationMinutes = visitDurationInputs[pointId].orEmpty(),
+                                isDurationError = touchedVisitFields[pointId] == true &&
                                         !isVisitMinutesValid(visitDurationInputs[pointId].orEmpty())
                             )
                         },
-                        onVisitChange = { pointId, value ->
+                        onVisitDurationChange = { pointId, value ->
                             touchedVisitFields[pointId] = true
                             visitDurationInputs[pointId] = value
                         }
@@ -305,8 +320,8 @@ fun RouteOptimizationDialog(
 private data class DayPointVisitField(
     val pointId: Long,
     val pointName: String,
-    val value: String,
-    val isError: Boolean
+    val visitDurationMinutes: String,
+    val isDurationError: Boolean
 )
 
 @Composable
@@ -318,7 +333,7 @@ private fun DaySettingsCard(
     onStartClick: () -> Unit,
     onEndClick: () -> Unit,
     points: List<DayPointVisitField>,
-    onVisitChange: (Long, String) -> Unit
+    onVisitDurationChange: (Long, String) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -356,17 +371,19 @@ private fun DaySettingsCard(
                         .padding(horizontal = 10.dp, vertical = 10.dp)
                 ) {
                     Text(point.pointName, style = MaterialTheme.typography.bodyMedium)
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
-                        value = point.value,
-                        onValueChange = { onVisitChange(point.pointId, it.filter(Char::isDigit)) },
+                        value = point.visitDurationMinutes,
+                        onValueChange = { onVisitDurationChange(point.pointId, it.filter(Char::isDigit)) },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Минут на посещение") },
+                        label = { Text("Длительность посещения, мин") },
                         singleLine = true,
-                        isError = point.isError,
+                        isError = point.isDurationError,
                         supportingText = {
-                            if (point.isError) {
+                            if (point.isDurationError) {
                                 Text("Введи число больше 0")
+                            } else {
+                                Text("Время посещения алгоритм рассчитает сам")
                             }
                         }
                     )
@@ -381,11 +398,13 @@ private fun DaySettingsCard(
 private fun rememberDialogTimeState(value: String): TimePickerState {
     val hour = value.substringBefore(':').toIntOrNull() ?: 8
     val minute = value.substringAfter(':', "00").toIntOrNull() ?: 0
-    return rememberTimePickerState(
-        initialHour = hour,
-        initialMinute = minute,
-        is24Hour = true
-    )
+    return key(value) {
+        rememberTimePickerState(
+            initialHour = hour,
+            initialMinute = minute,
+            is24Hour = true
+        )
+    }
 }
 
 private fun deriveDate(firstDate: String, index: Int): String {

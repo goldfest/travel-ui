@@ -64,6 +64,7 @@ fun RouteEditorScreen(
     isGraphLoading: Boolean,
     isGraphReady: Boolean,
     isGraphDownloadInProgress: Boolean,
+    graphProgressPercent: Int,
     graphMessage: String?,
     routeName: String,
     routeDescription: String,
@@ -199,6 +200,7 @@ fun RouteEditorScreen(
                                 isGraphLoading = isGraphLoading,
                                 isGraphReady = isGraphReady,
                                 isGraphDownloadInProgress = isGraphDownloadInProgress,
+                                graphProgressPercent = graphProgressPercent,
                                 graphMessage = graphMessage,
                                 onDownloadGraphClick = onDownloadGraphClick
                             )
@@ -436,6 +438,7 @@ private fun GraphStatusCard(
     isGraphLoading: Boolean,
     isGraphReady: Boolean,
     isGraphDownloadInProgress: Boolean,
+    graphProgressPercent: Int,
     graphMessage: String?,
     onDownloadGraphClick: () -> Unit
 ) {
@@ -470,9 +473,28 @@ private fun GraphStatusCard(
                 }
             )
 
-            if (isGraphLoading) {
+            if (isGraphLoading || isGraphDownloadInProgress) {
+                val progress = graphProgressPercent.coerceIn(0, 100)
                 Spacer(modifier = Modifier.height(12.dp))
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Прогресс загрузки",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        text = "$progress%",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                LinearProgressIndicator(
+                    progress = progress / 100f,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
 
             Spacer(modifier = Modifier.height(12.dp))

@@ -75,19 +75,33 @@ fun RouteMapScreen(
         routeMap != null && selectedDay != null -> {
             BottomSheetScaffold(
                 scaffoldState = scaffoldState,
-                sheetPeekHeight = 78.dp,
+                sheetPeekHeight = 92.dp,
                 sheetDragHandle = {
-                    Text(
-                        text = "Точки маршрута",
-                        modifier = Modifier.padding(vertical = 10.dp),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Column(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Точки маршрута",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = if (state.isSegmentSelectionReady) {
+                                "Показан выбранный участок дня"
+                            } else {
+                                "Выберите минимум 2 соседние точки для показа участка"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 },
                 sheetContent = {
                     RoutePointsSheet(
                         points = selectedDay.points,
                         selectedPointId = state.selectedPointId,
+                        selectedSegmentPointIds = state.selectedSegmentPointIds,
                         onPointClick = { pointId ->
                             onPointSelected(pointId)
                             scope.launch { scaffoldState.bottomSheetState.partialExpand() }
@@ -147,6 +161,7 @@ fun RouteMapScreen(
                             OsmRouteMapView(
                                 day = selectedDay,
                                 selectedPointId = state.selectedPointId,
+                                selectedSegmentPointIds = state.selectedSegmentPointIds,
                                 modifier = Modifier.fillMaxSize(),
                                 onPointClick = { pointId ->
                                     onPointSelected(pointId)
@@ -205,8 +220,8 @@ private fun RouteSummaryCard(
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SummaryChip("${distanceKm ?: 0.0} км")
-                SummaryChip("${durationMin ?: 0} мин")
+                SummaryChip(formatDistance(distanceKm))
+                SummaryChip(durationMin?.let { formatMinutesWithHours(it) } ?: "0 мин")
                 SummaryChip(transport)
             }
             Text(
@@ -229,6 +244,7 @@ private fun SummaryChip(text: String) {
 private fun RoutePointsSheet(
     points: List<RouteMapPoint>,
     selectedPointId: Int?,
+    selectedSegmentPointIds: Set<Int>,
     onPointClick: (Int) -> Unit,
     onOpenPoi: (Int) -> Unit,
     showOpenPoiAction: Boolean
@@ -236,11 +252,12 @@ private fun RoutePointsSheet(
     LazyColumn(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
         itemsIndexed(points) { index, point ->
             val selected = point.routePointId == selectedPointId
+            val selectedForSegment = point.routePointId in selectedSegmentPointIds
 
             Card(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
+                    containerColor = if (selectedForSegment) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
                 ),
                 onClick = { onPointClick(point.routePointId) }
             ) {
@@ -249,11 +266,14 @@ private fun RoutePointsSheet(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.Top
                 ) {
-                    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.primary) {
+                    Surface(
+                        shape = MaterialTheme.shapes.large,
+                        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer
+                    ) {
                         Text(
                             text = (index + 1).toString(),
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
+                            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
                             style = MaterialTheme.typography.labelLarge
                         )
                     }
@@ -262,8 +282,13 @@ private fun RoutePointsSheet(
                         point.poiAddress?.let {
                             Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
+                        Text(
+                            text = "Время посещения: ${formatPointVisitRange(point) ?: "не задано"}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         point.estimatedVisitMinutes?.let {
-                            Text("Посещение: $it мин", style = MaterialTheme.typography.bodySmall)
+                            Text("Длительность: ${formatMinutesWithHours(it)}", style = MaterialTheme.typography.bodySmall)
                         }
                         if (showOpenPoiAction) {
                             Button(onClick = { onOpenPoi(point.poiId) }) {
@@ -275,4 +300,35 @@ private fun RoutePointsSheet(
             }
         }
     }
+}
+
+private fun formatDistance(distanceKm: Double?): String {
+    val value = distanceKm ?: 0.0
+    return if (value % 1.0 == 0.0) {
+        "${value.toInt()} км"
+    } else {
+        "%.1f км".format(value)
+    }
+}
+
+private fun formatMinutesWithHours(minutes: Int): String {
+    if (minutes <= 0) return "0 мин"
+    val hours = minutes / 60
+    val rest = minutes % 60
+    return when {
+        hours <= 0 -> "$rest мин"
+        rest <= 0 -> "$hours ч"
+        else -> "$hours ч $rest мин"
+    }
+}
+
+private fun formatIsoTime(value: String?): String? {
+    if (value.isNullOrBlank()) return null
+    return value.substringAfter('T', value).take(5)
+}
+
+private fun formatPointVisitRange(point: RouteMapPoint): String? {
+    val start = formatIsoTime(point.plannedArrivalAt)
+    val end = formatIsoTime(point.plannedDepartureAt)
+    return if (!start.isNullOrBlank() && !end.isNullOrBlank()) "$start — $end" else null
 }

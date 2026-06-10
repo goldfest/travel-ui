@@ -1,8 +1,10 @@
 package com.travelguide.city
 
+import com.travelguide.core.PagedResult
 import com.travelguide.domain.models.City
 import com.travelguide.network.city.CityApi
 import com.travelguide.network.dto.city.CityResponseDto
+import com.travelguide.network.dto.common.PageResponseDto
 
 class CityRepository(
     private val api: CityApi
@@ -14,13 +16,29 @@ class CityRepository(
         direction: String = "ASC",
         isPopular: Boolean? = null
     ): List<City> {
+        return getCitiesPage(
+            page = page,
+            size = size,
+            sort = sort,
+            direction = direction,
+            isPopular = isPopular
+        ).content
+    }
+
+    suspend fun getCitiesPage(
+        page: Int = 0,
+        size: Int = 20,
+        sort: String = "name",
+        direction: String = "ASC",
+        isPopular: Boolean? = null
+    ): PagedResult<City> {
         return api.getCities(
             page = page,
             size = size,
             sort = sort,
             direction = direction,
             isPopular = isPopular
-        ).content.map { it.toDomain() }
+        ).toPagedResult { it.toDomain() }
     }
 
     suspend fun getPopularCities(): List<City> {
@@ -38,14 +56,42 @@ class CityRepository(
         sort: String = "name",
         direction: String = "ASC"
     ): List<City> {
+        return searchCitiesPage(
+            query = query,
+            page = page,
+            size = size,
+            sort = sort,
+            direction = direction
+        ).content
+    }
+
+    suspend fun searchCitiesPage(
+        query: String,
+        page: Int = 0,
+        size: Int = 20,
+        sort: String = "name",
+        direction: String = "ASC"
+    ): PagedResult<City> {
         return api.searchCities(
             query = query,
             page = page,
             size = size,
             sort = sort,
             direction = direction
-        ).content.map { it.toDomain() }
+        ).toPagedResult { it.toDomain() }
     }
+}
+
+private inline fun <T, R> PageResponseDto<T>.toPagedResult(transform: (T) -> R): PagedResult<R> {
+    return PagedResult(
+        content = content.map(transform),
+        totalElements = totalElements,
+        totalPages = totalPages,
+        page = number,
+        size = size,
+        first = first,
+        last = last
+    )
 }
 
 private fun CityResponseDto.toDomain(): City {

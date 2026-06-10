@@ -20,6 +20,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 import com.travelguide.core.toUserMessage
+
+private const val SEARCH_POI_PAGE_SIZE = 10
+
 class SearchViewModel(
     private val cityRepository: CityRepository,
     private val poiRepository: PoiRepository,
@@ -28,7 +31,7 @@ class SearchViewModel(
     private val reviewRepository: ReviewRepository
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(SearchUiState())
+    private val _state = MutableStateFlow(SearchUiState(poiPageSize = SEARCH_POI_PAGE_SIZE))
     val state: StateFlow<SearchUiState> = _state.asStateFlow()
 
     private var searchJob: Job? = null
@@ -58,6 +61,9 @@ class SearchViewModel(
             items = emptyList(),
             selectedCity = null,
             isLoading = false,
+            poiPage = 0,
+            poiTotalPages = 0,
+            poiTotalElements = 0,
             errorMessage = null
         )
         loadRecentQueries()
@@ -74,10 +80,16 @@ class SearchViewModel(
     }
 
     fun selectCity(city: City) {
-        _state.value = _state.value.copy(selectedCity = city)
+        _state.value = _state.value.copy(
+            selectedCity = city,
+            items = emptyList(),
+            poiPage = 0,
+            poiTotalPages = 0,
+            poiTotalElements = 0
+        )
         val currentQuery = _state.value.query
         if (currentQuery.isNotBlank()) {
-            searchPoisInSelectedCity(currentQuery, city)
+            searchPoisInSelectedCity(currentQuery, city, page = 0)
             recordSearch(currentQuery, city.id)
         }
     }
@@ -96,6 +108,9 @@ class SearchViewModel(
                 cities = emptyList(),
                 items = emptyList(),
                 selectedCity = null,
+                poiPage = 0,
+                poiTotalPages = 0,
+                poiTotalElements = 0,
                 errorMessage = null
             )
             loadRecentQueries()
@@ -114,18 +129,22 @@ class SearchViewModel(
             runCatching {
                 cityRepository.searchCities(query = query)
             }.onSuccess { cities ->
+                val selectedCity = _state.value.selectedCity
+
                 _state.value = _state.value.copy(
                     isLoading = false,
                     cities = cities,
-                    items = if (_state.value.selectedCity == null) emptyList() else _state.value.items,
+                    items = if (selectedCity == null) emptyList() else _state.value.items,
+                    poiPage = if (selectedCity == null) 0 else _state.value.poiPage,
+                    poiTotalPages = if (selectedCity == null) 0 else _state.value.poiTotalPages,
+                    poiTotalElements = if (selectedCity == null) 0 else _state.value.poiTotalElements,
                     errorMessage = null
                 )
 
-                recordSearch(query, _state.value.selectedCity?.id)
+                recordSearch(query, selectedCity?.id)
 
-                val selectedCity = _state.value.selectedCity
                 if (selectedCity != null) {
-                    searchPoisInSelectedCity(query, selectedCity)
+                    searchPoisInSelectedCity(query, selectedCity, page = 0)
                 }
             }.onFailure { e ->
                 _state.value = _state.value.copy(
@@ -136,10 +155,17 @@ class SearchViewModel(
         }
     }
 
-    fun searchPoisInSelectedCity(query: String, city: City? = _state.value.selectedCity) {
+    fun searchPoisInSelectedCity(
+        query: String,
+        city: City? = _state.value.selectedCity,
+        page: Int = 0
+    ) {
         if (city == null || query.isBlank()) {
             _state.value = _state.value.copy(
-                items = emptyList()
+                items = emptyList(),
+                poiPage = 0,
+                poiTotalPages = 0,
+                poiTotalElements = 0
             )
             return
         }
@@ -151,16 +177,23 @@ class SearchViewModel(
             )
 
             runCatching {
-                val pois = poiRepository.searchPois(
+                val poisPage = poiRepository.searchPoisPage(
                     cityId = city.id,
-                    query = query
+                    query = query,
+                    page = page,
+                    size = SEARCH_POI_PAGE_SIZE
                 )
 
-                buildPoiCardItems(pois)
-            }.onSuccess { items ->
+                val items = buildPoiCardItems(poisPage.content)
+                poisPage to items
+            }.onSuccess { (poisPage, items) ->
                 _state.value = _state.value.copy(
                     isLoading = false,
                     items = items,
+                    poiPage = poisPage.page,
+                    poiPageSize = poisPage.size.takeIf { it > 0 } ?: SEARCH_POI_PAGE_SIZE,
+                    poiTotalPages = poisPage.totalPages,
+                    poiTotalElements = poisPage.totalElements,
                     errorMessage = null
                 )
             }.onFailure { e ->
@@ -170,6 +203,14 @@ class SearchViewModel(
                 )
             }
         }
+    }
+
+    fun loadPoiSearchPage(page: Int) {
+        searchPoisInSelectedCity(
+            query = _state.value.query,
+            city = _state.value.selectedCity,
+            page = page
+        )
     }
 
     fun toggleFavorite(poiId: Int) {

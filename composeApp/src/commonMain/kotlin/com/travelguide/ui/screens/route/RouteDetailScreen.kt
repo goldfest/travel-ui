@@ -30,6 +30,7 @@ import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
@@ -58,16 +59,7 @@ import com.travelguide.domain.models.Route
 import com.travelguide.domain.models.RouteDay
 import com.travelguide.domain.models.RoutePoint
 import com.travelguide.domain.models.RouteStatus
-import com.travelguide.domain.models.RouteUnscheduledPoint
 import com.travelguide.route.RouteOptimizationForm
-
-private data class ScheduledVisitUi(
-    val dayNumber: Int,
-    val routeDate: String?,
-    val pointName: String,
-    val arrivalAt: String,
-    val departureAt: String,
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -88,6 +80,7 @@ fun RouteDetailScreen(
     onExportOfflineArchiveClick: () -> Unit,
     isOfflineMode: Boolean = false,
     isOfflineAvailable: Boolean = false,
+    isOptimizing: Boolean = false,
 ) {
     var exportMenuExpanded by remember { mutableStateOf(false) }
     var optimizeDialogExpanded by remember { mutableStateOf(false) }
@@ -129,16 +122,20 @@ fun RouteDetailScreen(
                     ) {
                         FilledTonalButton(
                             onClick = { optimizeDialogExpanded = true },
-                            enabled = route.status != RouteStatus.GRAPH_PREPARING
+                            enabled = route.status != RouteStatus.GRAPH_PREPARING && !isOptimizing
                         ) {
-                            Icon(Icons.Default.Tune, contentDescription = null)
+                            if (isOptimizing) {
+                                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Default.Tune, contentDescription = null)
+                            }
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Оптимизировать")
+                            Text(if (isOptimizing) "Оптимизация…" else "Оптимизировать")
                         }
 
                         FilledTonalButton(
                             onClick = onDownloadOfflineClick,
-                            enabled = route.status != RouteStatus.GRAPH_PREPARING
+                            enabled = route.status != RouteStatus.GRAPH_PREPARING && !isOptimizing
                         ) {
                             Icon(Icons.Default.Download, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
@@ -148,7 +145,7 @@ fun RouteDetailScreen(
                         Box {
                             FilledTonalButton(
                                 onClick = { exportMenuExpanded = true },
-                                enabled = route.status != RouteStatus.GRAPH_PREPARING
+                                enabled = route.status != RouteStatus.GRAPH_PREPARING && !isOptimizing
                             ) {
                                 Icon(Icons.Default.Share, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -286,6 +283,14 @@ fun RouteDetailScreen(
                         }
                     }
 
+                    if (isOptimizing) {
+                        item {
+                            OptimizationProgressCard(
+                                modifier = Modifier.padding(horizontal = 16.dp)
+                            )
+                        }
+                    }
+
                     item {
                         StatsSection(
                             route = route,
@@ -301,14 +306,6 @@ fun RouteDetailScreen(
                     }
 
 
-                    if (route.isOptimized || route.optimizationSummary != null) {
-                        item {
-                            OptimizationResultSection(
-                                route = route,
-                                modifier = Modifier.padding(horizontal = 16.dp)
-                            )
-                        }
-                    }
 
                     if (route.days.isNotEmpty()) {
                         item {
@@ -327,29 +324,44 @@ fun RouteDetailScreen(
                         }
                     }
 
-                    if (route.points.isNotEmpty()) {
-                        item {
-                            SectionHeader(
-                                title = "Все точки маршрута",
-                                subtitle = "${route.points.size} ${pluralPoints(route.points.size)}",
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                            )
-                        }
-
-                        items(route.points) { point ->
-                            RoutePointItem(
-                                point = point,
-                                modifier = Modifier
-                                    .padding(horizontal = 16.dp)
-                                    .fillMaxWidth()
-                            )
-                        }
-                    }
 
                     item {
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OptimizationProgressCard(
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp)
+            Column {
+                Text(
+                    text = "Алгоритм оптимизирует маршрут…",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "Рассчитываются порядок точек, время посещения и продолжительность дня.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -390,7 +402,6 @@ private fun RouteHeroSection(
                 RouteTag(route.transportModeText())
                 RouteTag(route.status.label())
                 RouteTag(if (route.isOptimized) "Оптимизирован" else "Без оптимизации")
-                route.optimizationMode?.let { RouteTag(it) }
             }
         }
     }
@@ -422,7 +433,7 @@ private fun StatsSection(
                 modifier = Modifier.fillMaxWidth(0.48f)
             )
             StatCard(
-                title = route.durationMin?.let { "$it мин" } ?: "-",
+                title = route.durationMin?.let { formatMinutesWithHours(it) } ?: "-",
                 subtitle = "Время",
                 icon = { Icon(Icons.Default.Schedule, contentDescription = null) },
                 modifier = Modifier.fillMaxWidth(0.48f)
@@ -508,7 +519,6 @@ private fun RouteInfoCard(
             InfoRow("Статус", route.status.label())
             InfoRow("Оптимизация", if (route.isOptimized) "Да" else "Нет")
 
-            route.optimizationMode?.let { InfoRow("Режим оптимизации", it) }
             route.startPoint?.let { InfoRow("Начало", it) }
             route.endPoint?.let { InfoRow("Конец", it) }
 
@@ -531,171 +541,6 @@ private fun RouteInfoCard(
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun OptimizationResultSection(
-    route: Route,
-    modifier: Modifier = Modifier
-) {
-    val scheduledVisits = route.days
-        .sortedBy { it.dayNumber }
-        .flatMap { day ->
-            day.points
-                .sortedBy { it.orderIndex }
-                .filter { !it.plannedArrivalAt.isNullOrBlank() && !it.plannedDepartureAt.isNullOrBlank() }
-                .map { point ->
-                    ScheduledVisitUi(
-                        dayNumber = day.dayNumber,
-                        routeDate = day.routeDate,
-                        pointName = point.poiName ?: point.poi?.name.orEmpty(),
-                        arrivalAt = point.plannedArrivalAt.orEmpty(),
-                        departureAt = point.plannedDepartureAt.orEmpty()
-                    )
-                }
-        }
-
-    val unscheduledPoints = route.optimizationSummary?.unscheduledPoints.orEmpty()
-    val recommendations = buildOptimizationRecommendations(route, unscheduledPoints)
-
-    ElevatedCard(
-        modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "Результат оптимизации",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            InfoRow("Успешно запланировано", scheduledVisits.size.toString())
-            InfoRow("Не удалось запланировать", unscheduledPoints.size.toString())
-
-            if (scheduledVisits.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "1. Успешно запланировано",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-
-                scheduledVisits.forEach { visit ->
-                    ScheduledVisitCard(visit)
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-            }
-
-            if (unscheduledPoints.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "2. Не удалось запланировать",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-
-                unscheduledPoints.forEach { point ->
-                    UnscheduledPointCard(point)
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-            }
-
-            if (recommendations.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "3. Рекомендации",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-
-                recommendations.forEach { recommendation ->
-                    Text(
-                        text = "• $recommendation",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(vertical = 2.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ScheduledVisitCard(visit: ScheduledVisitUi) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)
-        )
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = visit.pointName,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = buildString {
-                    append("День ${visit.dayNumber}")
-                    formatIsoDate(visit.routeDate)?.let { append(" • $it") }
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "Прибытие: ${formatIsoTime(visit.arrivalAt) ?: "-"}",
-                style = MaterialTheme.typography.bodySmall
-            )
-            Text(
-                text = "Уход: ${formatIsoTime(visit.departureAt) ?: "-"}",
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
-    }
-}
-
-@Composable
-private fun UnscheduledPointCard(point: RouteUnscheduledPoint) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
-        )
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = point.poiName ?: "Точка #${point.routePointId}",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-
-            val dayText = buildString {
-                point.dayNumber?.let { append("День $it") }
-                formatIsoDate(point.routeDate)?.let {
-                    if (isNotBlank()) append(" • ")
-                    append(it)
-                }
-            }
-
-            if (dayText.isNotBlank()) {
-                Text(
-                    text = dayText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Text(
-                text = point.reason.orEmpty().ifBlank { humanReadableReason(point.reasonCode) },
-                style = MaterialTheme.typography.bodySmall
-            )
         }
     }
 }
@@ -781,6 +626,15 @@ fun DayOverviewCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+
+                    calculateDayTotalMinutes(day)?.let { totalMinutes ->
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Общее время дня: ${formatMinutesWithHours(totalMinutes)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
                 Surface(
@@ -858,18 +712,16 @@ private fun DayPointRow(point: RoutePoint) {
             }
 
             Text(
-                text = "Посещение: ${point.estimatedVisitMinutes} мин",
+                text = "Длительность: ${formatMinutesWithHours(point.estimatedVisitMinutes)}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            formatPointVisitRange(point)?.let { visitRange ->
-                Text(
-                    text = "Время: $visitRange",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            Text(
+                text = "Время посещения: ${formatPointVisitRange(point) ?: "не задано"}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -903,14 +755,14 @@ fun RoutePointItem(
 
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Посещение: ${point.estimatedVisitMinutes} мин",
+                text = "Длительность: ${formatMinutesWithHours(point.estimatedVisitMinutes)}",
                 style = MaterialTheme.typography.bodySmall
             )
 
             formatPointVisitRange(point)?.let { visitRange ->
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Время: $visitRange",
+                    text = "Время посещения: $visitRange",
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -932,49 +784,36 @@ private fun RouteTag(text: String) {
     }
 }
 
-private fun buildOptimizationRecommendations(
-    route: Route,
-    unscheduledPoints: List<RouteUnscheduledPoint>
-): List<String> {
-    val result = linkedSetOf<String>()
-
-    route.warnings.forEach { warning ->
-        if (warning.isNotBlank()) result += warning
+private fun formatMinutesWithHours(minutes: Int): String {
+    if (minutes <= 0) return "0 мин"
+    val hours = minutes / 60
+    val rest = minutes % 60
+    return when {
+        hours <= 0 -> "$rest мин"
+        rest <= 0 -> "$hours ч"
+        else -> "$hours ч $rest мин"
     }
-
-    if (unscheduledPoints.isNotEmpty()) {
-        result += "Попробуйте расширить временное окно дня."
-        result += "Попробуйте сократить длительность посещения для проблемных точек."
-        result += "Проверьте дату посещения: часть объектов может быть закрыта в выбранный день."
-    }
-
-    if (route.optimizationMode == "USER_ORDER" && unscheduledPoints.isNotEmpty()) {
-        result += "Попробуйте включить авто-распределение, чтобы система сама изменила порядок точек."
-    }
-
-    if (unscheduledPoints.any { it.reasonCode == "VISIT_EXCEEDS_DAY_WINDOW" }) {
-        result += "Перенесите часть точек на другой день."
-    }
-
-    if (unscheduledPoints.any {
-            it.reasonCode == "CLOSED_ON_DATE" || it.reasonCode == "ARRIVAL_AFTER_CLOSING" || it.reasonCode == "VISIT_EXCEEDS_CLOSING_TIME"
-        }
-    ) {
-        result += "Выберите другую дату или перестройте порядок посещений с учётом графика работы объектов."
-    }
-
-    return result.toList()
 }
 
-private fun humanReadableReason(reasonCode: String?): String {
-    return when (reasonCode) {
-        "CLOSED_ON_DATE" -> "Объект закрыт в выбранный день."
-        "ARRIVAL_AFTER_CLOSING" -> "Прибытие возможно только после закрытия объекта."
-        "VISIT_EXCEEDS_CLOSING_TIME" -> "Посещение не помещается в рабочее время объекта."
-        "VISIT_EXCEEDS_DAY_WINDOW" -> "Посещение не помещается в доступное окно дня."
-        "NO_FEASIBLE_SLOT" -> "Не удалось найти подходящее время для посещения."
-        else -> "Не удалось корректно встроить объект в маршрут."
+private fun calculateDayTotalMinutes(day: RouteDay): Int? {
+    val points = day.points.sortedBy { it.orderIndex }
+    if (points.isEmpty()) return null
+
+    val scheduledStart = points.mapNotNull { timeToMinutes(formatIsoTime(it.plannedArrivalAt)) }.minOrNull()
+    val scheduledEnd = points.mapNotNull { timeToMinutes(formatIsoTime(it.plannedDepartureAt)) }.maxOrNull()
+    if (scheduledStart != null && scheduledEnd != null && scheduledEnd >= scheduledStart) {
+        return scheduledEnd - scheduledStart
     }
+
+    return points.sumOf { it.estimatedVisitMinutes }
+}
+
+private fun timeToMinutes(value: String?): Int? {
+    if (value.isNullOrBlank()) return null
+    val parts = value.split(':')
+    val hour = parts.getOrNull(0)?.toIntOrNull() ?: return null
+    val minute = parts.getOrNull(1)?.toIntOrNull() ?: return null
+    return hour * 60 + minute
 }
 
 private fun formatDistance(distanceKm: Double): String {

@@ -7,6 +7,10 @@ data class CityListUiState(
     val cities: List<City> = emptyList(),
     val popularCities: List<City> = emptyList(),
     val searchQuery: String = "",
+    val cityPage: Int = 0,
+    val cityPageSize: Int = 10,
+    val cityTotalPages: Int = 0,
+    val cityTotalElements: Long = 0,
     val errorMessage: String? = null
 )
 

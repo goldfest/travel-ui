@@ -30,7 +30,10 @@ data class RouteDetailUiState(
     val route: Route? = null,
     val isOfflineAvailable: Boolean = false,
     val errorMessage: String? = null,
-    val isOfflineMode: Boolean = false
+    val isOfflineMode: Boolean = false,
+    val isOptimizing: Boolean = false,
+    val optimizationMessage: String? = null,
+    val optimizationMessageId: Long = 0L
 )
 
 data class CreateRouteUiState(

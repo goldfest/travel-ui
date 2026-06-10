@@ -41,7 +41,8 @@ class FavoriteRepository(
     }
 
     suspend fun isFavorite(poiId: Int): Boolean {
-        return api.isFavorite(poiId.toLong())
+        return runCatching { api.isFavorite(poiId.toLong()) }
+            .getOrDefault(false)
     }
 
     suspend fun getFavoriteCount(): Long {

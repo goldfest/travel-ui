@@ -7,8 +7,10 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import androidx.core.content.ContextCompat
 import com.travelguide.R
+import com.travelguide.domain.models.LatLng
 import com.travelguide.domain.models.RouteMapDay
 import com.travelguide.domain.models.RouteMapPoint
+import com.travelguide.domain.models.RouteSegment
 import com.travelguide.theme.ExplorerMapLine
 import com.travelguide.theme.ExplorerMapLineAccent
 import org.osmdroid.util.BoundingBox
@@ -17,15 +19,24 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Overlay
 import org.osmdroid.views.overlay.Polyline
-import org.osmdroid.views.overlay.TilesOverlay
 import java.util.Locale
 import kotlin.math.roundToInt
 
-fun RouteMapDay.toGeoPoints(): List<GeoPoint> =
-    points.map { GeoPoint(it.latitude, it.longitude) }
+fun RouteMapDay.toGeoPoints(selectedSegmentPointIds: Set<Int> = emptySet()): List<GeoPoint> {
+    val selectedPoints = points
+        .sortedBy { it.orderIndex }
+        .filter { selectedSegmentPointIds.size >= 2 && it.routePointId in selectedSegmentPointIds }
 
-fun fitRouteToBounds(mapView: MapView, day: RouteMapDay) {
-    val points = day.toGeoPoints()
+    return (selectedPoints.takeIf { it.size >= 2 } ?: points)
+        .map { GeoPoint(it.latitude, it.longitude) }
+}
+
+fun fitRouteToBounds(
+    mapView: MapView,
+    day: RouteMapDay,
+    selectedSegmentPointIds: Set<Int> = emptySet()
+) {
+    val points = day.toGeoPoints(selectedSegmentPointIds)
     if (points.isEmpty()) return
 
     if (points.size == 1) {
@@ -47,8 +58,16 @@ fun focusOnPoint(mapView: MapView, point: RouteMapPoint) {
     mapView.controller.setZoom(16.4)
 }
 
-fun buildRoutePolyline(day: RouteMapDay): List<Overlay> {
-    val coordinates = day.polyline?.coordinates.orEmpty()
+fun buildRoutePolyline(
+    day: RouteMapDay,
+    selectedSegmentPointIds: Set<Int> = emptySet()
+): List<Overlay> {
+    val coordinates = if (selectedSegmentPointIds.size >= 2) {
+        buildSelectedSegmentCoordinates(day, selectedSegmentPointIds)
+    } else {
+        day.polyline?.coordinates.orEmpty()
+    }
+
     if (coordinates.size < 2) return emptyList()
 
     val geoPoints = coordinates.map { GeoPoint(it.latitude, it.longitude) }
@@ -67,6 +86,54 @@ fun buildRoutePolyline(day: RouteMapDay): List<Overlay> {
     }
 
     return listOf(base, accent)
+}
+
+private fun buildSelectedSegmentCoordinates(
+    day: RouteMapDay,
+    selectedSegmentPointIds: Set<Int>
+): List<LatLng> {
+    val selectedPoints = day.points
+        .sortedBy { it.orderIndex }
+        .filter { it.routePointId in selectedSegmentPointIds }
+
+    if (selectedPoints.size < 2) return emptyList()
+
+    val segmentsByPair = day.segments.associateBy { it.fromRoutePointId to it.toRoutePointId }
+    val result = mutableListOf<LatLng>()
+
+    selectedPoints.zipWithNext().forEach { (from, to) ->
+        val segment = segmentsByPair[from.routePointId to to.routePointId]
+            ?: segmentsByPair[to.routePointId to from.routePointId]
+
+        val segmentCoordinates = segment?.safeCoordinates(from, to).orEmpty()
+            .ifEmpty {
+                listOf(
+                    LatLng(from.latitude, from.longitude),
+                    LatLng(to.latitude, to.longitude)
+                )
+            }
+
+        segmentCoordinates.forEach { coordinate ->
+            if (result.lastOrNull() != coordinate) {
+                result += coordinate
+            }
+        }
+    }
+
+    return result
+}
+
+private fun RouteSegment.safeCoordinates(
+    from: RouteMapPoint,
+    to: RouteMapPoint
+): List<LatLng> {
+    val coordinates = polyline?.coordinates.orEmpty()
+    if (coordinates.isNotEmpty()) return coordinates
+
+    return listOf(
+        LatLng(from.latitude, from.longitude),
+        LatLng(to.latitude, to.longitude)
+    )
 }
 
 fun buildMarker(

@@ -24,8 +24,23 @@ fun SelectRouteForPoiRoute(
     var routes by remember { mutableStateOf<List<Route>>(emptyList()) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isAdding by remember { mutableStateOf(false) }
+    var selectedRouteId by remember { mutableStateOf<Int?>(null) }
+    var selectedDayNumber by remember { mutableStateOf<Int?>(null) }
+    var selectedOrderIndex by remember { mutableStateOf<Int?>(null) }
 
     val scope = rememberCoroutineScope()
+
+    fun defaultOrderFor(route: Route, dayNumber: Int?): Int {
+        val day = route.days.firstOrNull { it.dayNumber == dayNumber }
+        return (day?.points?.size ?: 0) + 1
+    }
+
+    fun selectRoute(route: Route) {
+        val firstDay = route.days.sortedBy { it.dayNumber }.firstOrNull()
+        selectedRouteId = route.id
+        selectedDayNumber = firstDay?.dayNumber ?: 1
+        selectedOrderIndex = defaultOrderFor(route, selectedDayNumber)
+    }
 
     fun reload() {
         scope.launch {
@@ -36,9 +51,16 @@ fun SelectRouteForPoiRoute(
                 container.routeRepository
                     .getRoutesByCity(cityId)
                     .filter { !it.isArchived }
+                    .sortedByDescending { it.id }
             }.onSuccess { loaded ->
                 routes = loaded
                 isLoading = false
+                val selected = loaded.firstOrNull { it.id == selectedRouteId }
+                if (selected == null) {
+                    selectedRouteId = null
+                    selectedDayNumber = null
+                    selectedOrderIndex = null
+                }
             }.onFailure { e ->
                 routes = emptyList()
                 errorMessage = e.message ?: "Не удалось загрузить маршруты"
@@ -55,21 +77,36 @@ fun SelectRouteForPoiRoute(
         routes = routes,
         isLoading = isLoading,
         errorMessage = errorMessage,
+        isAdding = isAdding,
+        selectedRouteId = selectedRouteId,
+        selectedDayNumber = selectedDayNumber,
+        selectedOrderIndex = selectedOrderIndex,
         onRetry = { reload() },
         onBackClick = onBackClick,
-        onRouteClick = { route ->
+        onRouteSelected = { route -> selectRoute(route) },
+        onDaySelected = { route, dayNumber ->
+            selectedRouteId = route.id
+            selectedDayNumber = dayNumber
+            selectedOrderIndex = defaultOrderFor(route, dayNumber)
+        },
+        onOrderSelected = { orderIndex ->
+            selectedOrderIndex = orderIndex
+        },
+        onConfirmAdd = { route ->
             if (isAdding) return@SelectRouteForPoiScreen
+            val dayNumber = selectedDayNumber ?: return@SelectRouteForPoiScreen
+            val orderIndex = selectedOrderIndex ?: defaultOrderFor(route, dayNumber)
 
             scope.launch {
                 isAdding = true
                 errorMessage = null
 
                 runCatching {
-                    val targetDay = route.days.maxOfOrNull { it.dayNumber } ?: 1
                     container.routeRepository.addPoiToRoute(
                         routeId = route.id,
                         poiId = poiId,
-                        dayNumber = targetDay
+                        dayNumber = dayNumber,
+                        orderIndex = orderIndex
                     )
                 }.onSuccess { updatedRoute ->
                     onAdded(updatedRoute.id)

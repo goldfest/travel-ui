@@ -2,6 +2,7 @@ package com.travelguide.core
 
 object NetworkConfig {
 
+    //const val BASE_URL = "http://10.0.2.2:8090"
     const val BASE_URL = "https://turban-financial-penholder.ngrok-free.dev"
 
     const val AUTH_HOST = BASE_URL

@@ -40,19 +40,38 @@ fun POIListRoute(
         poiTypes = state.poiTypes,
         isLoading = state.isLoading,
         errorMessage = state.errorMessage,
-        onRetry = { vm.loadPoisByCity(cityId) },
+        currentPage = state.currentPage,
+        totalPages = state.totalPages,
+        onRetry = { vm.loadPoisByCity(cityId, page = state.currentPage) },
         onSearch = { query, typeCode ->
             val selectedTypeIds = state.poiTypes
                 .filter { it.code == typeCode }
                 .map { it.id }
 
             if (query.isBlank() && typeCode == null) {
-                vm.loadPoisByCity(cityId)
+                vm.loadPoisByCity(cityId, page = 0)
             } else {
                 vm.searchPoisInCity(
                     cityId = cityId,
                     query = query,
-                    poiTypeIds = selectedTypeIds
+                    poiTypeIds = selectedTypeIds,
+                    page = 0
+                )
+            }
+        },
+        onPageChange = { page, query, typeCode ->
+            val selectedTypeIds = state.poiTypes
+                .filter { it.code == typeCode }
+                .map { it.id }
+
+            if (query.isBlank() && typeCode == null) {
+                vm.loadPoisByCity(cityId, page = page)
+            } else {
+                vm.searchPoisInCity(
+                    cityId = cityId,
+                    query = query,
+                    poiTypeIds = selectedTypeIds,
+                    page = page
                 )
             }
         },

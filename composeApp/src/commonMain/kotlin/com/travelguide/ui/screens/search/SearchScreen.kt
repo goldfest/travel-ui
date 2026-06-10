@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import com.travelguide.domain.models.City
 import com.travelguide.domain.models.PoiCardUiModel
 import com.travelguide.components.cards.POICard
+import com.travelguide.ui.components.PaginationControls
 
 @Composable
 fun SearchScreen(
@@ -53,16 +54,19 @@ fun SearchScreen(
     recentSearches: List<String>,
     isLoading: Boolean,
     errorMessage: String?,
+    poiCurrentPage: Int,
+    poiTotalPages: Int,
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
     onSelectRecentQuery: (String) -> Unit,
     onClearHistory: () -> Unit,
     onSelectCity: (City) -> Unit,
+    onPoiPageChange: (Int) -> Unit,
     onToggleFavorite: (Int) -> Unit,
     onBackClick: () -> Unit,
     onPOIClick: (Int) -> Unit
 ) {
-    val popularCategories = listOf("Рестораны", "Отели", "Музеи", "Парки", "Туалеты")
+    val popularCategories = listOf("Москва", "Санкт-Петербург")
 
     Scaffold(
         topBar = {
@@ -85,7 +89,7 @@ fun SearchScreen(
             OutlinedTextField(
                 value = query,
                 onValueChange = onQueryChange,
-                label = { Text("Что вы ищете?") },
+                label = { Text("Поиск по городам... ") },
                 leadingIcon = {
                     Icon(Icons.Default.Search, contentDescription = null)
                 },
@@ -165,7 +169,7 @@ fun SearchScreen(
                     Spacer(modifier = Modifier.padding(8.dp))
 
                     Text(
-                        text = "Популярные категории",
+                        text = "Популярные города",
                         style = MaterialTheme.typography.titleMedium
                     )
                     Spacer(modifier = Modifier.padding(4.dp))
@@ -311,6 +315,17 @@ fun SearchScreen(
                                     item = item,
                                     onClick = { onPOIClick(item.poi.id) },
                                     onFavoriteClick = { onToggleFavorite(item.poi.id) }
+                                )
+                            }
+
+                            item {
+                                PaginationControls(
+                                    currentPage = poiCurrentPage,
+                                    totalPages = poiTotalPages,
+                                    isLoading = isLoading,
+                                    onPreviousPage = { onPoiPageChange(poiCurrentPage - 1) },
+                                    onNextPage = { onPoiPageChange(poiCurrentPage + 1) },
+                                    modifier = Modifier.padding(vertical = 8.dp)
                                 )
                             }
                         }

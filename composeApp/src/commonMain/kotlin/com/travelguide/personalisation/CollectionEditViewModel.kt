@@ -50,6 +50,7 @@ class CollectionEditViewModel(
         collectionId: Int,
         name: String,
         description: String?,
+        coverUrl: String? = null,
         onSuccess: (com.travelguide.domain.models.Collection) -> Unit
     ) {
         viewModelScope.launch {
@@ -63,7 +64,8 @@ class CollectionEditViewModel(
                 repository.updateCollection(
                     collectionId = collectionId,
                     name = name,
-                    description = description
+                    description = description,
+                    coverUrl = coverUrl
                 )
             }.onSuccess { updated ->
                 val merged = updated.copy(pois = _state.value.pois)

@@ -136,7 +136,22 @@ data class RouteUnscheduledPointDto(
     val dayNumber: Int? = null,
     val routeDate: String? = null,
     val reasonCode: String? = null,
-    val reason: String? = null
+    val reason: String? = null,
+    val currentVisitMinutes: Int? = null,
+    val suggestions: List<RouteOptimizationSuggestionDto> = emptyList()
+)
+
+@Serializable
+data class RouteOptimizationSuggestionDto(
+    val type: String? = null,
+    val title: String? = null,
+    val description: String? = null,
+    val routeDayId: Long? = null,
+    val dayNumber: Int? = null,
+    val routeDate: String? = null,
+    val availableMinutes: Int? = null,
+    val routePointId: Long? = null,
+    val recommendedVisitMinutes: Int? = null
 )
 
 @Serializable

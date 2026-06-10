@@ -39,6 +39,7 @@ data class RouteEditorUiState(
     val isGraphLoading: Boolean = false,
     val isGraphReady: Boolean = false,
     val isGraphDownloadInProgress: Boolean = false,
+    val graphProgressPercent: Int = 0,
     val graphMessage: String? = null,
 
     val routeName: String = "",

@@ -8,28 +8,43 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 import com.travelguide.core.toUserMessage
+
+private const val CITY_PAGE_SIZE = 10
+
 class CityViewModel(
     private val repository: CityRepository
 ) : ViewModel() {
 
-    private val _listState = MutableStateFlow(CityListUiState())
+    private val _listState = MutableStateFlow(CityListUiState(cityPageSize = CITY_PAGE_SIZE))
     val listState: StateFlow<CityListUiState> = _listState.asStateFlow()
 
     private val _detailsState = MutableStateFlow(CityDetailsUiState())
     val detailsState: StateFlow<CityDetailsUiState> = _detailsState.asStateFlow()
 
-    fun loadCities() {
+    fun loadCities(page: Int = 0) {
         viewModelScope.launch {
-            _listState.value = _listState.value.copy(isLoading = true, errorMessage = null)
+            _listState.value = _listState.value.copy(
+                isLoading = true,
+                searchQuery = "",
+                errorMessage = null
+            )
 
             runCatching {
-                val allCities = repository.getCities()
-                val popular = repository.getPopularCities()
+                val citiesPage = repository.getCitiesPage(page = page, size = CITY_PAGE_SIZE)
+                val popular = if (_listState.value.popularCities.isEmpty()) {
+                    repository.getPopularCities()
+                } else {
+                    _listState.value.popularCities
+                }
 
                 _listState.value = _listState.value.copy(
                     isLoading = false,
-                    cities = allCities,
+                    cities = citiesPage.content,
                     popularCities = popular,
+                    cityPage = citiesPage.page,
+                    cityPageSize = citiesPage.size.takeIf { it > 0 } ?: CITY_PAGE_SIZE,
+                    cityTotalPages = citiesPage.totalPages,
+                    cityTotalElements = citiesPage.totalElements,
                     errorMessage = null
                 )
             }.onFailure { e ->
@@ -41,7 +56,7 @@ class CityViewModel(
         }
     }
 
-    fun searchCities(query: String) {
+    fun searchCities(query: String, page: Int = 0) {
         viewModelScope.launch {
             _listState.value = _listState.value.copy(
                 isLoading = true,
@@ -50,12 +65,19 @@ class CityViewModel(
             )
 
             runCatching {
-                val result = if (query.isBlank()) repository.getCities()
-                else repository.searchCities(query)
+                val result = if (query.isBlank()) {
+                    repository.getCitiesPage(page = page, size = CITY_PAGE_SIZE)
+                } else {
+                    repository.searchCitiesPage(query = query, page = page, size = CITY_PAGE_SIZE)
+                }
 
                 _listState.value = _listState.value.copy(
                     isLoading = false,
-                    cities = result,
+                    cities = result.content,
+                    cityPage = result.page,
+                    cityPageSize = result.size.takeIf { it > 0 } ?: CITY_PAGE_SIZE,
+                    cityTotalPages = result.totalPages,
+                    cityTotalElements = result.totalElements,
                     errorMessage = null
                 )
             }.onFailure { e ->
@@ -64,6 +86,15 @@ class CityViewModel(
                     errorMessage = e.toUserMessage("Ошибка поиска городов")
                 )
             }
+        }
+    }
+
+    fun loadCityPage(page: Int) {
+        val query = _listState.value.searchQuery
+        if (query.isBlank()) {
+            loadCities(page = page)
+        } else {
+            searchCities(query = query, page = page)
         }
     }
 

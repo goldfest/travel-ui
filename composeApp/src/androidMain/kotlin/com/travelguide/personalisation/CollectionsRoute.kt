@@ -13,7 +13,7 @@ import com.travelguide.ui.screens.personalisation.CollectionsScreen
 fun CollectionsRoute(
     container: AppContainer,
     onBackClick: () -> Unit,
-    onEditCollection: (Int) -> Unit
+    onCollectionClick: (Int) -> Unit
 ) {
     val vm: CollectionsViewModel = viewModel(
         factory = SimpleViewModelFactory {
@@ -32,13 +32,10 @@ fun CollectionsRoute(
         isLoading = state.isLoading,
         errorMessage = state.errorMessage,
         onBackClick = onBackClick,
-        onCreateCollection = { name, description ->
-            vm.createCollection(name, description)
+        onCreateCollection = { name, description, coverUrl ->
+            vm.createCollection(name, description, coverUrl)
         },
-        onDeleteCollection = { collectionId ->
-            vm.deleteCollection(collectionId)
-        },
-        onEditCollection = onEditCollection,
+        onCollectionClick = onCollectionClick,
         onRetry = { vm.load() }
     )
 }

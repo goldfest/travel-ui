@@ -303,7 +303,9 @@ private fun Route.toFallbackMap(): RouteMap =
                             routePoints.lastIndex -> "END"
                             else -> "WAYPOINT"
                         },
-                        estimatedVisitMinutes = point.estimatedVisitMinutes
+                        estimatedVisitMinutes = point.estimatedVisitMinutes,
+                        plannedArrivalAt = point.plannedArrivalAt,
+                        plannedDepartureAt = point.plannedDepartureAt
                     )
                 }
             )

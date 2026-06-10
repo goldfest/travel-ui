@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Report
 import androidx.compose.material.icons.filled.Route
@@ -113,6 +114,7 @@ fun POIDetailScreen(
     onRetry: () -> Unit,
     onBackClick: () -> Unit,
     onAddToRoute: () -> Unit,
+    onBuildRouteToPoi: () -> Unit,
     onAddToCollection: () -> Unit,
     onAddToFavorite: () -> Unit,
     onWriteReview: () -> Unit,
@@ -199,8 +201,8 @@ fun POIDetailScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Button(
-                            onClick = onAddToRoute,
-                            modifier = Modifier.weight(1f),
+                            onClick = onBuildRouteToPoi,
+                            modifier = Modifier.weight(1.15f),
                             shape = RoundedCornerShape(18.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = TravelAccent,
@@ -208,17 +210,31 @@ fun POIDetailScreen(
                             )
                         ) {
                             Icon(
+                                imageVector = Icons.Default.Navigation,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        Button(
+                            onClick = onAddToRoute,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(18.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = TravelPanelSoft,
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Icon(
                                 imageVector = Icons.Default.Route,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("", maxLines = 1)
                         }
 
                         Button(
                             onClick = onAddToCollection,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(0.8f),
                             shape = RoundedCornerShape(18.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = TravelPanelSoft,
@@ -230,8 +246,6 @@ fun POIDetailScreen(
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("", maxLines = 1)
                         }
                     }
                 }

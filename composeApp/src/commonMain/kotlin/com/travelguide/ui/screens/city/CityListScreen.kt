@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.travelguide.domain.models.City
+import com.travelguide.ui.components.PaginationControls
 import com.travelguide.theme.TravelAccent
 import com.travelguide.theme.TravelAccentDeep
 import com.travelguide.theme.TravelAccentSoft
@@ -81,8 +82,12 @@ fun CityListScreen(
     popularCities: List<City>,
     isLoading: Boolean,
     errorMessage: String?,
+    currentPage: Int,
+    totalPages: Int,
     onRetry: () -> Unit,
     onSearch: (String) -> Unit,
+    onPreviousPage: () -> Unit,
+    onNextPage: () -> Unit,
     onSearchClick: () -> Unit,
     onCityClick: (Int) -> Unit,
     onProfileClick: () -> Unit,
@@ -243,6 +248,18 @@ fun CityListScreen(
                             city = city,
                             onClick = { onCityClick(city.id) },
                             modifier = Modifier.padding(horizontal = 20.dp)
+                        )
+                    }
+
+                    item {
+                        PaginationControls(
+                            currentPage = currentPage,
+                            totalPages = totalPages,
+                            isLoading = isLoading,
+                            onPreviousPage = onPreviousPage,
+                            onNextPage = onNextPage,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                            labelColor = Color.White
                         )
                     }
                 }

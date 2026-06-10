@@ -28,6 +28,7 @@ fun PoiDetailRoute(
     onBackClick: () -> Unit,
     onCreateNewRoute: (cityId: Int, poiId: Int) -> Unit,
     onChooseExistingRoute: (cityId: Int, poiId: Int) -> Unit,
+    onBuildRouteToPoi: (cityId: Int, poiId: Int) -> Unit,
     onAddToFavorite: (Boolean) -> Unit,
     onWriteReview: () -> Unit,
     onViewReviews: () -> Unit,
@@ -77,6 +78,10 @@ fun PoiDetailRoute(
         onBackClick = onBackClick,
         onAddToRoute = {
             showRouteActionSheet = true
+        },
+        onBuildRouteToPoi = {
+            val poi = poiState.poi ?: return@POIDetailScreen
+            onBuildRouteToPoi(poi.cityId, poi.id)
         },
         onAddToCollection = {
             showActionDialog = true
@@ -160,12 +165,15 @@ fun PoiDetailRoute(
     if (showCreateDialog) {
         CreateCollectionDialog(
             onDismiss = { showCreateDialog = false },
-            onCreate = { name, description ->
+            subtitle = "Создайте коллекцию — этот объект сразу будет добавлен в неё.",
+            confirmText = "Создать и добавить",
+            onCreate = { name, description, coverUrl ->
                 scope.launch {
                     runCatching {
                         val created = container.collectionRepository.createCollection(
                             name = name,
-                            description = description
+                            description = description,
+                            coverUrl = coverUrl
                         )
                         container.collectionRepository.addPoiToCollection(
                             collectionId = created.id,

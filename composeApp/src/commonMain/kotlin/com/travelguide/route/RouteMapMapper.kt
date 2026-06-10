@@ -42,7 +42,9 @@ fun RouteMapResponseDto.toDomain(): RouteMap =
                         latitude = point.latitude,
                         longitude = point.longitude,
                         markerType = point.markerType,
-                        estimatedVisitMinutes = point.estimatedVisitMinutes
+                        estimatedVisitMinutes = point.estimatedVisitMinutes,
+                        plannedArrivalAt = point.plannedArrivalAt,
+                        plannedDepartureAt = point.plannedDepartureAt
                     )
                 },
                 segments = day.segments.map { seg ->

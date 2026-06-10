@@ -15,19 +15,22 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 import com.travelguide.core.toUserMessage
+
+private const val POI_PAGE_SIZE = 10
+
 class PoiViewModel(
     private val repository: PoiRepository,
     private val favoriteRepository: FavoriteRepository,
     private val reviewRepository: ReviewRepository
 ) : ViewModel() {
 
-    private val _listState = MutableStateFlow(PoiListUiState())
+    private val _listState = MutableStateFlow(PoiListUiState(pageSize = POI_PAGE_SIZE))
     val listState: StateFlow<PoiListUiState> = _listState.asStateFlow()
 
     private val _detailsState = MutableStateFlow(PoiDetailsUiState())
     val detailsState: StateFlow<PoiDetailsUiState> = _detailsState.asStateFlow()
 
-    fun loadPoisByCity(cityId: Int) {
+    fun loadPoisByCity(cityId: Int, page: Int = 0) {
         viewModelScope.launch {
             _listState.value = _listState.value.copy(
                 isLoading = true,
@@ -35,17 +38,30 @@ class PoiViewModel(
             )
 
             runCatching {
-                val poisDeferred = async { repository.getPoisByCity(cityId = cityId) }
-                val typesDeferred = async { repository.getPoiTypes() }
+                val poisDeferred = async {
+                    repository.getPoisByCityPage(
+                        cityId = cityId,
+                        page = page,
+                        size = POI_PAGE_SIZE
+                    )
+                }
+                val typesDeferred = async {
+                    if (_listState.value.poiTypes.isEmpty()) repository.getPoiTypes()
+                    else _listState.value.poiTypes
+                }
 
-                val pois = poisDeferred.await()
+                val poisPage = poisDeferred.await()
                 val types = typesDeferred.await()
-                val items = buildPoiCardItems(pois)
+                val items = buildPoiCardItems(poisPage.content)
 
                 _listState.value = PoiListUiState(
                     isLoading = false,
                     items = items,
                     poiTypes = types,
+                    currentPage = poisPage.page,
+                    pageSize = poisPage.size.takeIf { it > 0 } ?: POI_PAGE_SIZE,
+                    totalPages = poisPage.totalPages,
+                    totalElements = poisPage.totalElements,
                     errorMessage = null
                 )
             }.onFailure { e ->
@@ -60,7 +76,8 @@ class PoiViewModel(
     fun searchPoisInCity(
         cityId: Int,
         query: String,
-        poiTypeIds: List<Int> = emptyList()
+        poiTypeIds: List<Int> = emptyList(),
+        page: Int = 0
     ) {
         viewModelScope.launch {
             _listState.value = _listState.value.copy(
@@ -69,21 +86,31 @@ class PoiViewModel(
             )
 
             runCatching {
-                val pois = if (query.isBlank() && poiTypeIds.isEmpty()) {
-                    repository.getPoisByCity(cityId = cityId)
+                val poisPage = if (query.isBlank() && poiTypeIds.isEmpty()) {
+                    repository.getPoisByCityPage(
+                        cityId = cityId,
+                        page = page,
+                        size = POI_PAGE_SIZE
+                    )
                 } else {
-                    repository.searchPois(
+                    repository.searchPoisPage(
                         cityId = cityId,
                         query = query,
-                        poiTypeIds = poiTypeIds
+                        poiTypeIds = poiTypeIds,
+                        page = page,
+                        size = POI_PAGE_SIZE
                     )
                 }
 
-                val items = buildPoiCardItems(pois)
+                val items = buildPoiCardItems(poisPage.content)
 
                 _listState.value = _listState.value.copy(
                     isLoading = false,
                     items = items,
+                    currentPage = poisPage.page,
+                    pageSize = poisPage.size.takeIf { it > 0 } ?: POI_PAGE_SIZE,
+                    totalPages = poisPage.totalPages,
+                    totalElements = poisPage.totalElements,
                     errorMessage = null
                 )
             }.onFailure { e ->
@@ -100,20 +127,22 @@ class PoiViewModel(
             _detailsState.value = PoiDetailsUiState(isLoading = true)
 
             runCatching {
-                val poiDeferred = async { repository.getPoiById(id) }
-                val favoriteDeferred = async { favoriteRepository.isFavorite(id) }
-                val statsDeferred = async { reviewRepository.getPoiStats(id) }
+                val poi = repository.getPoiById(id)
 
-                val poi = poiDeferred.await()
-                val isFavorite = favoriteDeferred.await()
-                val stats = statsDeferred.await()
+                val isFavorite = runCatching {
+                    favoriteRepository.isFavorite(id)
+                }.getOrDefault(false)
+
+                val stats = runCatching {
+                    reviewRepository.getPoiStats(id)
+                }.getOrNull()
 
                 _detailsState.value = PoiDetailsUiState(
                     isLoading = false,
                     poi = poi,
                     isFavorite = isFavorite,
-                    averageRating = stats.averageRating,
-                    reviewCount = stats.totalReviews.toInt(),
+                    averageRating = stats?.averageRating,
+                    reviewCount = stats?.totalReviews?.toInt() ?: 0,
                     errorMessage = null
                 )
             }.onFailure { e ->
@@ -228,6 +257,7 @@ class PoiViewModel(
                 }
             }.awaitAll()
         }
+
     private fun updateFavoriteInList(poiId: Int, isFavorite: Boolean) {
         _listState.value = _listState.value.copy(
             items = _listState.value.items.map { item ->

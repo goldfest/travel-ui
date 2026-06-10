@@ -11,6 +11,7 @@ import com.travelguide.domain.models.RoutePoint
 import com.travelguide.domain.models.RoutePolyline
 import com.travelguide.domain.models.RouteStatus
 import com.travelguide.domain.models.TransportMode
+import com.travelguide.network.dto.route.CityGraphStatusResponseDto
 import com.travelguide.network.dto.route.CreateRouteDayRequestDto
 import com.travelguide.network.dto.route.CreateRoutePointRequestDto
 import com.travelguide.network.dto.route.CreateRouteRequestDto
@@ -22,6 +23,7 @@ import com.travelguide.network.dto.route.RoutePointResponseDto
 import com.travelguide.network.dto.route.RouteResponseDto
 import com.travelguide.network.dto.route.UpdateRouteRequestDto
 import com.travelguide.network.route.RouteApi
+import com.travelguide.network.route.OneTimeRouteRequestDto
 import com.travelguide.poi.PoiRepository
 import com.travelguide.route.offline.AddRoutePointSyncPayload
 import com.travelguide.route.offline.CreateRouteSyncPayload
@@ -58,12 +60,20 @@ class RouteRepository(
     private val onPendingSyncScheduled: (() -> Unit)? = null
 ) {
 
+    suspend fun getCityGraphStatus(cityId: Int): CityGraphStatusResponseDto {
+        return api.getCityGraphStatus(cityId.toLong())
+    }
+
     suspend fun isCityGraphReady(cityId: Int): Boolean {
-        return api.getCityGraphStatus(cityId.toLong()).ready
+        return getCityGraphStatus(cityId).ready
+    }
+
+    suspend fun requestCityGraphDownloadStatus(cityId: Int): CityGraphStatusResponseDto {
+        return api.requestCityGraphDownload(cityId.toLong())
     }
 
     suspend fun requestCityGraphDownload(cityId: Int): Boolean {
-        return api.requestCityGraphDownload(cityId.toLong()).ready
+        return requestCityGraphDownloadStatus(cityId).ready
     }
 
     suspend fun getOfflineRoutes(): List<Route> {
@@ -465,18 +475,33 @@ class RouteRepository(
                 val settings = daySettingsById[day.id]
                 val date = settings?.routeDate?.takeIf { !it.isNullOrBlank() } ?: day.routeDate
                 val start = settings?.dayStartTime?.takeIf { !it.isNullOrBlank() }
+                    ?: extractTime(day.plannedStart)
+                    ?: "08:00"
                 val end = settings?.dayEndTime?.takeIf { !it.isNullOrBlank() }
+                    ?: extractTime(day.plannedEnd)
+
+                var cursor = start
+                val scheduledPoints = day.points
+                    .sortedBy { it.orderIndex }
+                    .map { point ->
+                        val visitMinutes = request.visitMinutesByRoutePointId[point.id.toLong()]
+                            ?: point.estimatedVisitMinutes
+                        val visitStart = cursor
+                        val visitEnd = addMinutesToTime(visitStart, visitMinutes)
+                        cursor = visitEnd
+
+                        point.copy(
+                            estimatedVisitMinutes = visitMinutes,
+                            plannedArrivalAt = mergeDateAndTime(date, visitStart) ?: point.plannedArrivalAt,
+                            plannedDepartureAt = mergeDateAndTime(date, visitEnd) ?: point.plannedDepartureAt
+                        )
+                    }
 
                 day.copy(
                     routeDate = date,
                     plannedStart = mergeDateAndTime(date, start) ?: day.plannedStart,
                     plannedEnd = mergeDateAndTime(date, end) ?: day.plannedEnd,
-                    points = day.points.map { point ->
-                        point.copy(
-                            estimatedVisitMinutes = request.visitMinutesByRoutePointId[point.id.toLong()]
-                                ?: point.estimatedVisitMinutes
-                        )
-                    }
+                    points = scheduledPoints
                 )
             }
 
@@ -551,6 +576,26 @@ class RouteRepository(
                 ?: localStore?.getRoute(routeId)?.toFallbackMap()
                 ?: throw error
         }
+    }
+
+    suspend fun buildOneTimeRouteToPoi(
+        cityId: Int,
+        toPoiId: Int,
+        fromLatitude: Double,
+        fromLongitude: Double,
+        fromTitle: String?,
+        transportMode: TransportMode
+    ): RouteMap {
+        return api.buildOneTimeRouteToPoi(
+            OneTimeRouteRequestDto(
+                cityId = cityId.toLong(),
+                toPoiId = toPoiId.toLong(),
+                fromLatitude = fromLatitude,
+                fromLongitude = fromLongitude,
+                fromTitle = fromTitle?.trim()?.takeIf { it.isNotBlank() },
+                transportMode = transportMode.name
+            )
+        ).toDomain()
     }
 
     private suspend fun saveOfflineMutation(
@@ -819,7 +864,9 @@ private fun Route.toFallbackMap(): RouteMap =
                             routePoints.lastIndex -> "END"
                             else -> "WAYPOINT"
                         },
-                        estimatedVisitMinutes = point.estimatedVisitMinutes
+                        estimatedVisitMinutes = point.estimatedVisitMinutes,
+                        plannedArrivalAt = point.plannedArrivalAt,
+                        plannedDepartureAt = point.plannedDepartureAt
                     )
                 }
             )
@@ -901,6 +948,21 @@ private fun mergeDateAndTime(date: String?, time: String?): String? {
     val safeTime = time?.takeIf { it.isNotBlank() } ?: return null
     return "${safeDate}T${safeTime}:00"
 }
+
+private fun extractTime(value: String?): String? {
+    if (value.isNullOrBlank()) return null
+    return value.substringAfter('T', value).take(5).takeIf { it.isNotBlank() }
+}
+
+private fun addMinutesToTime(value: String, minutesToAdd: Int): String {
+    val parts = value.split(':')
+    val hour = parts.getOrNull(0)?.toIntOrNull() ?: return value
+    val minute = parts.getOrNull(1)?.toIntOrNull() ?: return value
+    val total = (hour * 60 + minute + minutesToAdd).floorMod(24 * 60)
+    return "%02d:%02d".format(total / 60, total % 60)
+}
+
+private fun Int.floorMod(mod: Int): Int = ((this % mod) + mod) % mod
 
 private fun RouteOptimizationSummaryDto.toDomain(): RouteOptimizationSummary =
     RouteOptimizationSummary(

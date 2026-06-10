@@ -28,6 +28,16 @@ data class AddPointToRouteRequestDto(
     val orderIndex: Int? = null
 )
 
+@Serializable
+data class OneTimeRouteRequestDto(
+    val cityId: Long,
+    val toPoiId: Long,
+    val fromLatitude: Double,
+    val fromLongitude: Double,
+    val fromTitle: String? = null,
+    val transportMode: String = "WALK"
+)
+
 class RouteApi(
     private val client: HttpClient,
     private val baseUrl: String
@@ -143,6 +153,13 @@ class RouteApi(
 
     suspend fun getRouteMap(routeId: Long): RouteMapResponseDto {
         return client.get("$routesUrl/$routeId/map").body()
+    }
+
+    suspend fun buildOneTimeRouteToPoi(request: OneTimeRouteRequestDto): RouteMapResponseDto {
+        return client.post("$routesUrl/one-time/to-poi") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }.body()
     }
 
 

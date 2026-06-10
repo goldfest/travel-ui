@@ -36,6 +36,8 @@ fun SearchRoute(
         recentSearches = state.recentQueries,
         isLoading = state.isLoading,
         errorMessage = state.errorMessage,
+        poiCurrentPage = state.poiPage,
+        poiTotalPages = state.poiTotalPages,
         onQueryChange = {
             vm.updateQuery(it)
             vm.search(it)
@@ -44,6 +46,7 @@ fun SearchRoute(
         onSelectRecentQuery = { vm.useRecentQuery(it) },
         onClearHistory = { vm.clearHistory() },
         onSelectCity = { vm.selectCity(it) },
+        onPoiPageChange = { page -> vm.loadPoiSearchPage(page) },
         onToggleFavorite = { poiId -> vm.toggleFavorite(poiId) },
         onBackClick = onBackClick,
         onPOIClick = onPOIClick

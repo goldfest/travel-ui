@@ -23,6 +23,7 @@ import com.travelguide.ui.map.TravelMapTileSources
 fun OsmRouteMapView(
     day: RouteMapDay?,
     selectedPointId: Int?,
+    selectedSegmentPointIds: Set<Int> = emptySet(),
     modifier: Modifier = Modifier,
     onPointClick: (Int) -> Unit = {}
 ) {
@@ -47,11 +48,18 @@ fun OsmRouteMapView(
             val polylineKey = currentDay.polyline?.coordinates
                 ?.joinToString("|") { "${it.latitude}:${it.longitude}" }
                 .orEmpty()
-            val renderKey = "${darkTheme}_${currentDay.dayNumber}_${selectedPointId}_${pointsKey}_${polylineKey}"
+            val segmentsKey = currentDay.segments.joinToString("|") { segment ->
+                val segmentLine = segment.polyline?.coordinates
+                    ?.joinToString(";") { "${it.latitude}:${it.longitude}" }
+                    .orEmpty()
+                "${segment.fromRoutePointId}:${segment.toRoutePointId}:$segmentLine"
+            }
+            val selectedSegmentKey = selectedSegmentPointIds.sorted().joinToString("-")
+            val renderKey = "${darkTheme}_${currentDay.dayNumber}_${selectedPointId}_${selectedSegmentKey}_${pointsKey}_${polylineKey}_${segmentsKey}"
 
             if (lastRenderedKey != renderKey) {
                 mv.overlays.clear()
-                mv.overlays.addAll(buildRoutePolyline(currentDay))
+                mv.overlays.addAll(buildRoutePolyline(currentDay, selectedSegmentPointIds))
 
                 currentDay.points.forEach { point ->
                     mv.overlays.add(
@@ -66,7 +74,11 @@ fun OsmRouteMapView(
                 }
 
                 val selectedPoint = currentDay.points.firstOrNull { it.routePointId == selectedPointId }
-                if (selectedPoint != null) focusOnPoint(mv, selectedPoint) else fitRouteToBounds(mv, currentDay)
+                if (selectedPoint != null && selectedSegmentPointIds.size < 2) {
+                    focusOnPoint(mv, selectedPoint)
+                } else {
+                    fitRouteToBounds(mv, currentDay, selectedSegmentPointIds)
+                }
                 mv.invalidate()
                 lastRenderedKey = renderKey
             }

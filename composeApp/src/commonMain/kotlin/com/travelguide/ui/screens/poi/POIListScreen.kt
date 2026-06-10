@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import com.travelguide.domain.models.POIType
 import com.travelguide.domain.models.PoiCardUiModel
 import com.travelguide.components.cards.POICard
+import com.travelguide.ui.components.PaginationControls
 
 @Composable
 fun POIListScreen(
@@ -49,8 +50,11 @@ fun POIListScreen(
     poiTypes: List<POIType>,
     isLoading: Boolean,
     errorMessage: String?,
+    currentPage: Int,
+    totalPages: Int,
     onRetry: () -> Unit,
     onSearch: (String, String?) -> Unit,
+    onPageChange: (Int, String, String?) -> Unit,
     onPOIClick: (Int) -> Unit,
     onFavoriteClick: (Int) -> Unit,
     onBackClick: () -> Unit,
@@ -186,6 +190,21 @@ fun POIListScreen(
                                     item = item,
                                     onClick = { onPOIClick(item.poi.id) },
                                     onFavoriteClick = { onFavoriteClick(item.poi.id) }
+                                )
+                            }
+
+                            item {
+                                PaginationControls(
+                                    currentPage = currentPage,
+                                    totalPages = totalPages,
+                                    isLoading = isLoading,
+                                    onPreviousPage = {
+                                        onPageChange(currentPage - 1, searchQuery, selectedType)
+                                    },
+                                    onNextPage = {
+                                        onPageChange(currentPage + 1, searchQuery, selectedType)
+                                    },
+                                    modifier = Modifier.padding(vertical = 8.dp)
                                 )
                             }
                         }

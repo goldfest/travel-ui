@@ -94,18 +94,28 @@ class RouteDetailViewModel(
             val current = _state.value.route ?: return@launch
             if (_state.value.isOfflineMode) return@launch
 
-            _state.value = _state.value.copy(isLoading = true, route = current)
+            _state.value = _state.value.copy(
+                isLoading = false,
+                isOptimizing = true,
+                route = current,
+                errorMessage = null
+            )
+
             runCatching { repository.optimizeRoute(routeId, form.toDto()) }
                 .onSuccess { route ->
                     _state.value = _state.value.copy(
                         isLoading = false,
+                        isOptimizing = false,
                         route = route,
-                        errorMessage = null
+                        errorMessage = null,
+                        optimizationMessage = "Маршрут оптимизирован",
+                        optimizationMessageId = System.currentTimeMillis()
                     )
                 }
                 .onFailure { e ->
                     _state.value = _state.value.copy(
                         isLoading = false,
+                        isOptimizing = false,
                         errorMessage = e.toUserMessage("Не удалось оптимизировать маршрут")
                     )
                 }
