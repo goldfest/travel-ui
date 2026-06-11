@@ -30,7 +30,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -64,7 +63,6 @@ fun RouteEditorScreen(
     isGraphLoading: Boolean,
     isGraphReady: Boolean,
     isGraphDownloadInProgress: Boolean,
-    graphProgressPercent: Int,
     graphMessage: String?,
     routeName: String,
     routeDescription: String,
@@ -95,7 +93,8 @@ fun RouteEditorScreen(
     onSaveClick: () -> Unit
 ) {
     val selectedDay = days.firstOrNull { it.dayNumber == selectedDayNumber }
-    val saveEnabled = !isSaving && (mode == RouteEditorMode.EDIT || isGraphReady)
+    val canEditRouteContent = mode == RouteEditorMode.EDIT || isGraphReady
+    val saveEnabled = !isSaving && canEditRouteContent
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -200,54 +199,61 @@ fun RouteEditorScreen(
                                 isGraphLoading = isGraphLoading,
                                 isGraphReady = isGraphReady,
                                 isGraphDownloadInProgress = isGraphDownloadInProgress,
-                                graphProgressPercent = graphProgressPercent,
                                 graphMessage = graphMessage,
                                 onDownloadGraphClick = onDownloadGraphClick
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                         }
 
-                        OutlinedTextField(
-                            value = routeName,
-                            onValueChange = onNameChange,
-                            label = { Text("Название маршрута*") },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
+                        if (canEditRouteContent) {
+                            OutlinedTextField(
+                                value = routeName,
+                                onValueChange = onNameChange,
+                                label = { Text("Название маршрута*") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
 
-                        OutlinedTextField(
-                            value = routeDescription,
-                            onValueChange = onDescriptionChange,
-                            label = { Text("Описание") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(100.dp),
-                            maxLines = 4
-                        )
+                            OutlinedTextField(
+                                value = routeDescription,
+                                onValueChange = onDescriptionChange,
+                                label = { Text("Описание") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(100.dp),
+                                maxLines = 4
+                            )
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
 
-                        Text(
-                            text = "Режим передвижения",
-                            style = MaterialTheme.typography.labelLarge
-                        )
+                            Text(
+                                text = "Режим передвижения",
+                                style = MaterialTheme.typography.labelLarge
+                            )
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
 
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            contentPadding = PaddingValues(horizontal = 2.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            items(TransportMode.entries) { modeItem ->
-                                FilterChip(
-                                    selected = selectedTransport == modeItem,
-                                    onClick = { onTransportChange(modeItem) },
-                                    label = { Text(modeItem.label()) }
-                                )
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                contentPadding = PaddingValues(horizontal = 2.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                items(TransportMode.entries) { modeItem ->
+                                    FilterChip(
+                                        selected = selectedTransport == modeItem,
+                                        onClick = { onTransportChange(modeItem) },
+                                        label = { Text(modeItem.label()) }
+                                    )
+                                }
                             }
+                        } else if (mode == RouteEditorMode.CREATE && selectedCityId == null) {
+                            Text(
+                                text = "Сначала выберите город. После выбора приложение проверит, скачан ли граф дорог.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
@@ -263,84 +269,7 @@ fun RouteEditorScreen(
                 }
             }
 
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "Дни маршрута",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            days.forEach { day ->
-                                FilterChip(
-                                    selected = day.dayNumber == selectedDayNumber,
-                                    onClick = { onSelectDay(day.dayNumber) },
-                                    label = { Text("День ${day.dayNumber}") }
-                                )
-                            }
-
-                            if (mode == RouteEditorMode.CREATE) {
-                                FilterChip(
-                                    selected = false,
-                                    onClick = onAddDay,
-                                    label = {
-                                        Row {
-                                            Icon(Icons.Default.Add, contentDescription = null)
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text("День")
-                                        }
-                                    }
-                                )
-                            }
-                        }
-
-                        if (selectedDay != null) {
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "Описание дня ${selectedDay.dayNumber}",
-                                    style = MaterialTheme.typography.labelLarge
-                                )
-
-                                if (mode == RouteEditorMode.CREATE && days.size > 1) {
-                                    TextButton(onClick = { onRemoveDay(selectedDay.dayNumber) }) {
-                                        Icon(Icons.Default.Close, contentDescription = null)
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Удалить день")
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            OutlinedTextField(
-                                value = selectedDay.description,
-                                onValueChange = { onDayDescriptionChange(selectedDay.dayNumber, it) },
-                                label = { Text("Описание дня") },
-                                modifier = Modifier.fillMaxWidth(),
-                                maxLines = 3
-                            )
-                        }
-                    }
-                }
-            }
-
-            if (selectedDay != null) {
+            if (canEditRouteContent) {
                 item {
                     Card(
                         modifier = Modifier
@@ -349,85 +278,164 @@ fun RouteEditorScreen(
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(
-                                text = "Точки дня ${selectedDay.dayNumber}",
-                                style = MaterialTheme.typography.titleMedium
+                                text = "Дни маршрута",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
                             )
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
 
-                            if (selectedDay.points.isEmpty()) {
-                                Text(
-                                    text = "Точек пока нет",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            } else {
-                                selectedDay.points.forEachIndexed { index, point ->
-                                    EditorRoutePointCard(
-                                        index = index,
-                                        totalCount = selectedDay.points.size,
-                                        point = point,
-                                        onMoveUp = {
-                                            if (index > 0) {
-                                                onMovePoint(selectedDay.dayNumber, index, index - 1)
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                days.forEach { day ->
+                                    FilterChip(
+                                        selected = day.dayNumber == selectedDayNumber,
+                                        onClick = { onSelectDay(day.dayNumber) },
+                                        label = { Text("День ${day.dayNumber}") }
+                                    )
+                                }
+
+                                if (mode == RouteEditorMode.CREATE) {
+                                    FilterChip(
+                                        selected = false,
+                                        onClick = onAddDay,
+                                        label = {
+                                            Row {
+                                                Icon(Icons.Default.Add, contentDescription = null)
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("День")
                                             }
-                                        },
-                                        onMoveDown = {
-                                            if (index < selectedDay.points.lastIndex) {
-                                                onMovePoint(selectedDay.dayNumber, index, index + 1)
-                                            }
-                                        },
-                                        onRemove = {
-                                            onRemovePoiFromDay(selectedDay.dayNumber, point.poi.id)
                                         }
                                     )
+                                }
+                            }
 
-                                    if (index != selectedDay.points.lastIndex) {
-                                        Spacer(modifier = Modifier.height(8.dp))
+                            if (selectedDay != null) {
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = "Описание дня ${selectedDay.dayNumber}",
+                                        style = MaterialTheme.typography.labelLarge
+                                    )
+
+                                    if (mode == RouteEditorMode.CREATE && days.size > 1) {
+                                        TextButton(onClick = { onRemoveDay(selectedDay.dayNumber) }) {
+                                            Icon(Icons.Default.Close, contentDescription = null)
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Удалить день")
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                OutlinedTextField(
+                                    value = selectedDay.description,
+                                    onValueChange = { onDayDescriptionChange(selectedDay.dayNumber, it) },
+                                    label = { Text("Описание дня") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    maxLines = 3
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (selectedDay != null) {
+                    item {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = "Точки дня ${selectedDay.dayNumber}",
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                if (selectedDay.points.isEmpty()) {
+                                    Text(
+                                        text = "Точек пока нет",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                } else {
+                                    selectedDay.points.forEachIndexed { index, point ->
+                                        EditorRoutePointCard(
+                                            index = index,
+                                            totalCount = selectedDay.points.size,
+                                            point = point,
+                                            onMoveUp = {
+                                                if (index > 0) {
+                                                    onMovePoint(selectedDay.dayNumber, index, index - 1)
+                                                }
+                                            },
+                                            onMoveDown = {
+                                                if (index < selectedDay.points.lastIndex) {
+                                                    onMovePoint(selectedDay.dayNumber, index, index + 1)
+                                                }
+                                            },
+                                            onRemove = {
+                                                onRemovePoiFromDay(selectedDay.dayNumber, point.poi.id)
+                                            }
+                                        )
+
+                                        if (index != selectedDay.points.lastIndex) {
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "Добавить точки в день $selectedDayNumber",
-                            style = MaterialTheme.typography.titleMedium
-                        )
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "Добавить точки в день $selectedDayNumber",
+                                style = MaterialTheme.typography.titleMedium
+                            )
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
 
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = onSearchChange,
-                            label = { Text("Поиск объектов") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-            }
-
-            items(availablePois) { poi ->
-                val isSelected = selectedDay?.points?.any { it.poi.id == poi.id } == true
-
-                POIAddCard(
-                    poi = poi,
-                    isSelected = isSelected,
-                    onToggle = {
-                        if (!isSelected) {
-                            onAddPoiToDay(poi)
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = onSearchChange,
+                                label = { Text("Поиск объектов") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
                     }
-                )
+                }
+
+                items(availablePois) { poi ->
+                    val isSelected = selectedDay?.points?.any { it.poi.id == poi.id } == true
+
+                    POIAddCard(
+                        poi = poi,
+                        isSelected = isSelected,
+                        onToggle = {
+                            if (!isSelected) {
+                                onAddPoiToDay(poi)
+                            }
+                        }
+                    )
+                }
             }
         }
     }
@@ -438,7 +446,6 @@ private fun GraphStatusCard(
     isGraphLoading: Boolean,
     isGraphReady: Boolean,
     isGraphDownloadInProgress: Boolean,
-    graphProgressPercent: Int,
     graphMessage: String?,
     onDownloadGraphClick: () -> Unit
 ) {
@@ -473,43 +480,23 @@ private fun GraphStatusCard(
                 }
             )
 
-            if (isGraphLoading || isGraphDownloadInProgress) {
-                val progress = graphProgressPercent.coerceIn(0, 100)
+            if (!isGraphReady) {
                 Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+
+                FilledTonalButton(
+                    onClick = onDownloadGraphClick,
+                    enabled = !isGraphLoading && !isGraphDownloadInProgress
                 ) {
+                    Icon(Icons.Default.Download, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Прогресс загрузки",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Text(
-                        text = "$progress%",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold
+                        when {
+                            isGraphDownloadInProgress -> "Граф загружается..."
+                            isGraphLoading -> "Проверяем граф..."
+                            else -> "Скачать граф"
+                        }
                     )
                 }
-                Spacer(modifier = Modifier.height(6.dp))
-                LinearProgressIndicator(
-                    progress = progress / 100f,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            FilledTonalButton(
-                onClick = onDownloadGraphClick,
-                enabled = !isGraphReady && !isGraphDownloadInProgress
-            ) {
-                Icon(Icons.Default.Download, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    if (isGraphDownloadInProgress) "Скачивание..."
-                    else if (isGraphReady) "Граф уже скачан"
-                    else "Скачать граф"
-                )
             }
         }
     }

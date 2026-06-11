@@ -52,7 +52,6 @@ fun RouteEditorRoute(
         isGraphLoading = state.isGraphLoading,
         isGraphReady = state.isGraphReady,
         isGraphDownloadInProgress = state.isGraphDownloadInProgress,
-        graphProgressPercent = state.graphProgressPercent,
         graphMessage = state.graphMessage,
         routeName = state.routeName,
         routeDescription = state.routeDescription,
