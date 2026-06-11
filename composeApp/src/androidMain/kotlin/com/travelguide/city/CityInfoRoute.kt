@@ -39,7 +39,6 @@ fun CityInfoRoute(
 
     LaunchedEffect(cityId) {
         cityVm.loadCity(cityId)
-        poiVm.loadPoisByCity(cityId)
     }
 
     CityInfoScreen(
@@ -51,7 +50,42 @@ fun CityInfoRoute(
         poiTypes = poiState.poiTypes,
         isPoisLoading = poiState.isLoading,
         poisErrorMessage = poiState.errorMessage,
-        onRetryPois = { poiVm.loadPoisByCity(cityId) },
+        poiCurrentPage = poiState.currentPage,
+        poiTotalPages = poiState.totalPages,
+        poiTotalElements = poiState.totalElements,
+        onRetryPois = { poiVm.loadPoisByCity(cityId, page = poiState.currentPage) },
+        onSearchPois = { query, typeCode ->
+            val selectedTypeIds = poiState.poiTypes
+                .filter { it.code == typeCode }
+                .map { it.id }
+
+            if (query.isBlank() && typeCode == null) {
+                poiVm.loadPoisByCity(cityId, page = 0)
+            } else {
+                poiVm.searchPoisInCity(
+                    cityId = cityId,
+                    query = query,
+                    poiTypeIds = selectedTypeIds,
+                    page = 0
+                )
+            }
+        },
+        onPoiPageChange = { page, query, typeCode ->
+            val selectedTypeIds = poiState.poiTypes
+                .filter { it.code == typeCode }
+                .map { it.id }
+
+            if (query.isBlank() && typeCode == null) {
+                poiVm.loadPoisByCity(cityId, page = page)
+            } else {
+                poiVm.searchPoisInCity(
+                    cityId = cityId,
+                    query = query,
+                    poiTypeIds = selectedTypeIds,
+                    page = page
+                )
+            }
+        },
         onPOIClick = onPOIClick,
         onToggleFavorite = { poiId ->
             poiVm.toggleFavoriteForCard(poiId)

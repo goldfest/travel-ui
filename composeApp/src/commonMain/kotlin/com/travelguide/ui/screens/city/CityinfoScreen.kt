@@ -48,6 +48,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -71,6 +72,7 @@ import com.travelguide.components.cards.POICard
 import com.travelguide.domain.models.City
 import com.travelguide.domain.models.POIType
 import com.travelguide.domain.models.PoiCardUiModel
+import com.travelguide.ui.components.PaginationControls
 
 @Composable
 fun CityInfoScreen(
@@ -82,7 +84,12 @@ fun CityInfoScreen(
     poiTypes: List<POIType>,
     isPoisLoading: Boolean,
     poisErrorMessage: String?,
+    poiCurrentPage: Int,
+    poiTotalPages: Int,
+    poiTotalElements: Long,
     onRetryPois: () -> Unit,
+    onSearchPois: (String, String?) -> Unit,
+    onPoiPageChange: (Int, String, String?) -> Unit,
     onPOIClick: (Int) -> Unit,
     onToggleFavorite: (Int) -> Unit,
     onBackClick: () -> Unit,
@@ -91,13 +98,8 @@ fun CityInfoScreen(
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
 
-    val filteredItems = items.filter { item ->
-        val poi = item.poi
-        (selectedCategory == null || poi.poiType?.code == selectedCategory) &&
-                (searchQuery.isBlank() ||
-                        poi.name.contains(searchQuery, ignoreCase = true) ||
-                        poi.description?.contains(searchQuery, ignoreCase = true) == true ||
-                        poi.tags.any { it.contains(searchQuery, ignoreCase = true) })
+    LaunchedEffect(searchQuery, selectedCategory) {
+        onSearchPois(searchQuery, selectedCategory)
     }
 
     Scaffold(
@@ -132,7 +134,7 @@ fun CityInfoScreen(
                     item {
                         CityHero(
                             city = city,
-                            objectCount = items.size,
+                            objectCount = poiTotalElements.takeIf { it > 0L }?.toInt() ?: items.size,
                             poiPreviewImages = items.mapNotNull { it.poi.images.firstOrNull() },
                             onOpenCityMap = onOpenCityMap
                         )
@@ -208,7 +210,7 @@ fun CityInfoScreen(
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "${filteredItems.size} шт",
+                                text = if (poiTotalElements > 0) "${poiTotalElements} шт" else "${items.size} шт",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -218,9 +220,9 @@ fun CityInfoScreen(
                     when {
                         isPoisLoading && items.isEmpty() -> item { CenterLoader() }
                         poisErrorMessage != null -> item { ErrorCard("Ошибка загрузки достопримечательностей", poisErrorMessage.orEmpty(), onRetryPois) }
-                        filteredItems.isEmpty() -> item { EmptyPois() }
+                        items.isEmpty() -> item { EmptyPois() }
                         else -> {
-                            items(filteredItems) { item ->
+                            items(items) { item ->
                                 POICard(
                                     item = item,
                                     onClick = { onPOIClick(item.poi.id) },
@@ -228,6 +230,21 @@ fun CityInfoScreen(
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
                                 )
                             }
+                            item {
+                                PaginationControls(
+                                    currentPage = poiCurrentPage,
+                                    totalPages = poiTotalPages,
+                                    isLoading = isPoisLoading,
+                                    onPreviousPage = {
+                                        onPoiPageChange(poiCurrentPage - 1, searchQuery, selectedCategory)
+                                    },
+                                    onNextPage = {
+                                        onPoiPageChange(poiCurrentPage + 1, searchQuery, selectedCategory)
+                                    },
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                                )
+                            }
+
                             item { Spacer(modifier = Modifier.height(80.dp)) }
                         }
                     }
